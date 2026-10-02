@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SAP Blitz Day — Event Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #FFC300; --gold2: #FFD700;
+  --teal: #009EA7; --teal2: #00C8D4;
+  --night: #070B1A; --night2: #0D1428;
+  --white: #FFFFFF; --muted: rgba(255,255,255,0.55);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white); }
+
+/* Wizard layout */
+.wizard-wrap { max-width: 720px; margin: 0 auto; padding: 60px 20px; }
+.wizard-header { text-align:center; margin-bottom:48px; }
+.wizard-header h1 { font-size: clamp(28px,5vw,48px); font-weight:900; }
+.wizard-header h1 span { color:var(--gold); }
+
+/* Step indicator */
+.step-indicator { display:flex; gap:8px; justify-content:center; margin-bottom:40px; flex-wrap:wrap; }
+.step-dot { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.2);
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
+  color:var(--muted); transition:all 0.3s; cursor:default; }
+.step-dot.active { border-color:var(--teal); color:var(--teal2); background:rgba(0,200,212,0.12); }
+.step-dot.done { border-color:var(--gold); background:rgba(255,195,0,0.15); color:var(--gold); }
+
+/* Step panels */
+.step-panel { display:none; }
+.step-panel.active { display:block; }
+
+/* Cards */
+.card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09);
+  border-radius:20px; padding:32px; margin-bottom:24px; }
+.card-title { font-size:18px; font-weight:800; margin-bottom:8px; }
+.card-desc { color:var(--muted); font-size:14px; margin-bottom:24px; }
+
+/* Form inputs */
+.lf-group { margin-bottom:20px; }
+.lf-label { display:block; font-size:13px; font-weight:600; color:rgba(255,255,255,0.75);
+  margin-bottom:7px; }
+.lf-req { color:var(--gold); }
+.lf-input { width:100%; padding:12px 16px; background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:var(--white);
+  font-family:'Sora',sans-serif; font-size:14px; outline:none;
+  transition:border-color 0.2s; box-sizing:border-box; }
+.lf-input:focus { border-color:var(--teal); }
+.lf-input option { background:#0D1428; }
+
+/* Dynamic rows (partners, rooms) */
+.row-list { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.row-item { display:flex; gap:10px; align-items:center; }
+.row-item input { flex:1; }
+.remove-btn { background:rgba(255,100,100,0.15); border:1px solid rgba(255,100,100,0.3);
+  color:#ff6b6b; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px;
+  font-weight:700; transition:background 0.2s; white-space:nowrap; }
+.remove-btn:hover { background:rgba(255,100,100,0.25); }
+.add-btn { background:rgba(0,158,167,0.12); border:1px solid rgba(0,200,212,0.3);
+  color:var(--teal2); border-radius:8px; padding:10px 20px; cursor:pointer; font-size:13px;
+  font-weight:700; transition:background 0.2s; }
+.add-btn:hover { background:rgba(0,158,167,0.22); }
+
+/* Toggle */
+.toggle-wrap { display:flex; align-items:center; gap:14px; margin-bottom:20px; cursor:pointer; }
+.toggle { width:44px; height:24px; border-radius:99px; background:rgba(255,255,255,0.15);
+  position:relative; transition:background 0.25s; flex-shrink:0; }
+.toggle.on { background:var(--teal); }
+.toggle::after { content:''; position:absolute; width:18px; height:18px; border-radius:50%;
+  background:#fff; top:3px; left:3px; transition:transform 0.25s; }
+.toggle.on::after { transform:translateX(20px); }
+.toggle-label { font-size:14px; font-weight:600; }
+
+/* Nav buttons */
+.nav-row { display:flex; gap:14px; justify-content:flex-end; margin-top:24px; }
+.btn-back { background:transparent; border:2px solid rgba(255,255,255,0.2);
+  color:var(--white); border-radius:50px; padding:12px 28px; cursor:pointer;
+  font-family:'Sora',sans-serif; font-size:14px; font-weight:700; transition:border-color 0.2s; }
+.btn-back:hover { border-color:rgba(255,255,255,0.5); }
+.btn-next { background:linear-gradient(135deg,#FFC300,#FFD700); color:#1A1200;
+  border:none; border-radius:50px; padding:12px 32px; cursor:pointer;
+  font-family:'Sora',sans-serif; font-size:14px; font-weight:800;
+  box-shadow:0 4px 16px rgba(255,195,0,0.3); transition:all 0.2s; }
+.btn-next:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(255,195,0,0.32); }
+.btn-next:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+/* Progress bar (creation step) */
+.progress-list { list-style:none; display:flex; flex-direction:column; gap:12px; margin:24px 0; }
+.progress-item { display:flex; align-items:center; gap:14px; font-size:14px; color:var(--muted); }
+.progress-item.done { color:var(--teal2); }
+.progress-item.active { color:var(--white); font-weight:700; }
+.progress-item.error { color:#ff6b6b; }
+.p-icon { font-size:18px; width:24px; text-align:center; }
+
+/* Success / error cards */
+.result-card { border-radius:16px; padding:28px; text-align:center; margin-top:24px; }
+.result-card.success { background:rgba(0,158,167,0.15); border:1px solid rgba(0,200,212,0.35); }
+.result-card.error { background:rgba(255,100,100,0.1); border:1px solid rgba(255,100,100,0.3); }
+.result-url { font-size:16px; font-weight:700; color:var(--teal2); word-break:break-all;
+  margin:16px 0; }
+.copy-btn { background:var(--teal); color:var(--night); border:none; border-radius:50px;
+  padding:10px 24px; cursor:pointer; font-family:'Sora',sans-serif; font-size:13px;
+  font-weight:700; transition:opacity 0.2s; }
+.copy-btn:hover { opacity:0.85; }
+</style>
+</head>
+<body>
+<div class="wizard-wrap">
+  <div class="wizard-header">
+    <p style="color:var(--teal2);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">SAP PARTNER BLITZ DAY</p>
+    <h1>Event <span>Generator</span></h1>
+    <p style="color:var(--muted);margin-top:12px;font-size:15px;">Fill in your event details and get a live app in 30 seconds.</p>
+  </div>
+
+  <div class="step-indicator" id="step-indicator"></div>
+
+  <!-- Step 1: Event Basics -->
+  <div class="step-panel active" id="step-1">
+    <div class="card">
+      <div class="card-title">Event Basics</div>
+      <div class="card-desc">Core details about your Blitz Day event.</div>
+      <div class="lf-group">
+        <label class="lf-label">Event Name <span class="lf-req">*</span></label>
+        <input id="s1-name" class="lf-input" placeholder="e.g. Morocco Partner Blitz 2026" />
+      </div>
+      <div class="lf-group">
+        <label class="lf-label">Country / City <span class="lf-req">*</span></label>
+        <input id="s1-country" class="lf-input" placeholder="e.g. Morocco" />
+      </div>
+      <div class="lf-group">
+        <label class="lf-label">Phone Number Format <span class="lf-req">*</span></label>
+        <select id="s1-phone" class="lf-input">
+          <option value="egypt">Egypt — 01XXXXXXXXX or +201XXXXXXXXX</option>
+          <option value="saudi-arabia">Saudi Arabia — 05XXXXXXXX or +9665XXXXXXXX</option>
+          <option value="uae">UAE — 05XXXXXXXX or +9715XXXXXXXX</option>
+          <option value="morocco" selected>Morocco — 06XXXXXXXX or +2126XXXXXXXX</option>
+          <option value="kuwait">Kuwait — 8 digits or +965XXXXXXXX</option>
+          <option value="bahrain">Bahrain — 8 digits or +973XXXXXXXX</option>
+          <option value="jordan">Jordan — 07XXXXXXXX or +9627XXXXXXXX</option>
+          <option value="qatar">Qatar — 8 digits or +974XXXXXXXX</option>
+          <option value="oman">Oman — 8 digits or +968XXXXXXXX</option>
+          <option value="tunisia">Tunisia — 8 digits or +216XXXXXXXX</option>
+          <option value="algeria">Algeria — 05XXXXXXXX or +2135XXXXXXXX</option>
+          <option value="libya">Libya — 09XXXXXXXX or +2189XXXXXXXX</option>
+          <option value="generic">Generic — any 7–15 digit number</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="lf-group">
+          <label class="lf-label">Daily Lead Target <span class="lf-req">*</span></label>
+          <input id="s1-target" class="lf-input" type="number" value="65" min="1" />
+        </div>
+        <div class="lf-group">
+          <label class="lf-label">Dashboard Password <span class="lf-req">*</span></label>
+          <input id="s1-password" class="lf-input" type="text" placeholder="e.g. SAP2026" />
+        </div>
+      </div>
+    </div>
+    <div class="nav-row"><button class="btn-next" onclick="goNext(1)">Next &#8594;</button></div>
+  </div>
+
+  <!-- Step 2: Event Days -->
+  <div class="step-panel" id="step-2">
+    <div class="card">
+      <div class="card-title">Event Days</div>
+      <div class="card-desc">Add one or more days. Each day gets its own room assignments.</div>
+      <div class="row-list" id="days-list"></div>
+      <button class="add-btn" onclick="addDay()">+ Add Day</button>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack(2)">&#8592; Back</button>
+      <button class="btn-next" onclick="goNext(2)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Partners -->
+  <div class="step-panel" id="step-3">
+    <div class="card">
+      <div class="card-title">Partners</div>
+      <div class="card-desc">Add the partner companies participating in this event.</div>
+      <div class="row-list" id="partners-list"></div>
+      <button class="add-btn" onclick="addPartner()">+ Add Partner</button>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack(3)">&#8592; Back</button>
+      <button class="btn-next" onclick="goNext(3)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Account Validation -->
+  <div class="step-panel" id="step-4">
+    <div class="card">
+      <div class="card-title">Account Validation</div>
+      <div class="card-desc">Optionally upload a list of target accounts per partner. Reps will see a &#10003; when they enter a known account name.</div>
+      <div class="toggle-wrap" onclick="toggleAccountVal()">
+        <div class="toggle" id="toggle-accounts"></div>
+        <span class="toggle-label" id="toggle-accounts-label">Disabled</span>
+      </div>
+      <div id="accounts-upload-area" style="display:none;">
+        <div class="lf-group">
+          <label class="lf-label">Upload CSV <span class="lf-req">*</span></label>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Two columns: <strong>Partner</strong> (must match partner names exactly) and <strong>Account Name</strong>.</p>
+          <input id="accounts-csv" type="file" accept=".csv" class="lf-input" onchange="handleCsvUpload()" />
+        </div>
+        <div id="csv-status" style="font-size:13px;margin-top:8px;"></div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack(4)">&#8592; Back</button>
+      <button class="btn-next" onclick="goNext(4)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Room Assignments -->
+  <div class="step-panel" id="step-5">
+    <div class="card">
+      <div class="card-title">Room Assignments</div>
+      <div class="card-desc">Optionally list which rooms partners are assigned to each day.</div>
+      <div class="toggle-wrap" onclick="toggleRooms()">
+        <div class="toggle on" id="toggle-rooms"></div>
+        <span class="toggle-label" id="toggle-rooms-label">Enabled</span>
+      </div>
+      <div id="rooms-area">
+        <div id="rooms-by-day"></div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack(5)">&#8592; Back</button>
+      <button class="btn-next" onclick="goNext(5)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Step 6: Resources -->
+  <div class="step-panel" id="step-6">
+    <div class="card">
+      <div class="card-title">Resources &amp; Battle Cards</div>
+      <div class="card-desc">Optionally upload PDFs (max 10 MB each, up to 5 files) that will appear in the Resources section.</div>
+      <div class="toggle-wrap" onclick="toggleResources()">
+        <div class="toggle on" id="toggle-resources"></div>
+        <span class="toggle-label" id="toggle-resources-label">Enabled</span>
+      </div>
+      <div id="resources-area">
+        <div id="resources-list"></div>
+        <button class="add-btn" id="add-resource-btn" onclick="addResourceSlot()">+ Add PDF</button>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack(6)">&#8592; Back</button>
+      <button class="btn-next" onclick="goNext(6)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Step 7: Repo Name -->
+  <div class="step-panel" id="step-7">
+    <div class="card">
+      <div class="card-title">Repository Name</div>
+      <div class="card-desc">This becomes part of your event URL. Only lowercase letters, numbers, and hyphens.</div>
+      <div class="lf-group">
+        <label class="lf-label">Repo Name <span class="lf-req">*</span></label>
+        <input id="s7-repo" class="lf-input" placeholder="e.g. morocco-blitz-2026" oninput="onRepoInput()" />
+        <div id="repo-status" style="font-size:13px;margin-top:8px;"></div>
+      </div>
+      <p style="color:var(--muted);font-size:13px;">Your event will be live at: <strong id="preview-url" style="color:var(--teal2);">&#8212;</strong></p>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack(7)">&#8592; Back</button>
+      <button class="btn-next" id="btn-step7-next" onclick="goNext(7)" disabled>Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Step 8: Review & Create -->
+  <div class="step-panel" id="step-8">
+    <div class="card">
+      <div class="card-title">Review &amp; Create</div>
+      <div id="review-summary" style="color:var(--muted);font-size:14px;line-height:1.8;"></div>
+    </div>
+    <div class="nav-row" id="review-nav-row">
+      <button class="btn-back" onclick="goBack(8)">&#8592; Back</button>
+      <button class="btn-next" id="btn-create" onclick="createEvent()">Create My Event &#8594;</button>
+    </div>
+
+    <!-- Progress (shown during creation) -->
+    <div id="creation-progress" style="display:none;">
+      <ul class="progress-list" id="progress-steps"></ul>
+      <div id="creation-result"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BACKEND_URL = 'https://blitz-backend.cfapps.eu10.hana.ondemand.com'; // update after Task 7 deployment
+
+// ── State ──
+var state = {
+  currentStep: 1,
+  totalSteps: 8,
+  days: [],
+  partners: [],
+  accountValidation: false,
+  accounts: {},
+  roomsEnabled: true,
+  rooms: {},
+  resourcesEnabled: true,
+  resources: []
+};
+
+// ── Step indicator ──
+function renderStepIndicator() {
+  var el = document.getElementById('step-indicator');
+  var labels = ['Basics', 'Days', 'Partners', 'Accounts', 'Rooms', 'Resources', 'Repo', 'Review'];
+  el.innerHTML = Array.from({ length: state.totalSteps }, function(_, i) {
+    var n = i + 1;
+    var cls = n < state.currentStep ? 'done' : n === state.currentStep ? 'active' : '';
+    var inner = n < state.currentStep ? '&#10003;' : n;
+    return '<div class="step-dot ' + cls + '" title="' + labels[i] + '">' + inner + '</div>';
+  }).join('');
+}
+
+// ── Navigation ──
+function goNext(from) {
+  if (!validateStep(from)) return;
+  collectStep(from);
+  state.currentStep = from + 1;
+  showStep(state.currentStep);
+}
+
+function goBack(from) {
+  state.currentStep = from - 1;
+  showStep(state.currentStep);
+}
+
+function showStep(n) {
+  document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('step-' + n).classList.add('active');
+  renderStepIndicator();
+  if (n === 5) renderRoomsByDay();
+  if (n === 7) autoFillRepo();
+  if (n === 8) renderReview();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Validation ──
+function validateStep(n) {
+  if (n === 1) {
+    if (!v('s1-name') || !v('s1-country') || !v('s1-password') || !v('s1-target')) {
+      alert('Please fill in all required fields.'); return false;
+    }
+  }
+  if (n === 2) {
+    var days = collectDays();
+    if (days.length === 0) { alert('Add at least one day.'); return false; }
+    if (days.some(function(d) { return !d.label || !d.date; })) {
+      alert('Each day needs a label and a date.'); return false;
+    }
+  }
+  if (n === 3) {
+    var partners = collectPartners();
+    if (partners.length === 0) { alert('Add at least one partner.'); return false; }
+    if (partners.some(function(p) { return !p.trim(); })) {
+      alert('Partner names cannot be empty.'); return false;
+    }
+  }
+  if (n === 4 && state.accountValidation) {
+    if (Object.keys(state.accounts).length === 0) {
+      alert('Please upload a valid CSV file for account validation.'); return false;
+    }
+  }
+  if (n === 7) {
+    var repoVal = v('s7-repo');
+    if (!repoVal) { alert('Please enter a repo name.'); return false; }
+    if (!/^[a-z0-9-]+$/.test(repoVal)) {
+      alert('Repo name: only lowercase letters, numbers, and hyphens.'); return false;
+    }
+    if (document.getElementById('btn-step7-next').disabled) {
+      alert('Please wait for repo availability check to complete.'); return false;
+    }
+  }
+  return true;
+}
+
+function v(id) { return document.getElementById(id).value.trim(); }
+
+// ── Collect ──
+function collectStep(n) {
+  if (n === 2) state.days = collectDays();
+  if (n === 3) state.partners = collectPartners();
+  if (n === 5) state.rooms = collectRooms();
+}
+
+function collectDays() {
+  return Array.from(document.querySelectorAll('.day-row')).map(function(row) {
+    return {
+      label: row.querySelector('.day-label').value.trim(),
+      date:  row.querySelector('.day-date').value.trim()
+    };
+  }).filter(function(d) { return d.label || d.date; });
+}
+
+function collectPartners() {
+  return Array.from(document.querySelectorAll('.partner-input'))
+    .map(function(i) { return i.value.trim(); }).filter(Boolean);
+}
+
+function collectRooms() {
+  var rooms = {};
+  document.querySelectorAll('.rooms-day-group').forEach(function(group) {
+    var dayLabel = group.dataset.day;
+    rooms[dayLabel] = Array.from(group.querySelectorAll('.room-input'))
+      .map(function(i) { return i.value.trim(); }).filter(Boolean);
+  });
+  return rooms;
+}
+
+// ── Day management ──
+function addDay() {
+  var list = document.getElementById('days-list');
+  var idx = list.children.length;
+  var div = document.createElement('div');
+  div.className = 'row-item day-row';
+  div.innerHTML =
+    '<input class="lf-input day-label" placeholder="e.g. Day ' + (idx+1) + ' — Oct ' + (12+idx) + '" style="flex:2" />' +
+    '<input class="lf-input day-date" type="date" style="flex:1" />' +
+    '<button class="remove-btn" onclick="this.parentElement.remove()">Remove</button>';
+  list.appendChild(div);
+}
+
+// ── Partner management ──
+function addPartner(value) {
+  value = value || '';
+  var list = document.getElementById('partners-list');
+  var div = document.createElement('div');
+  div.className = 'row-item';
+  div.innerHTML =
+    '<input class="lf-input partner-input" placeholder="Partner name" value="' + escapeAttr(value) + '" />' +
+    '<button class="remove-btn" onclick="this.parentElement.remove()">Remove</button>';
+  list.appendChild(div);
+}
+
+function escapeAttr(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Account validation toggle ──
+function toggleAccountVal() {
+  state.accountValidation = !state.accountValidation;
+  document.getElementById('toggle-accounts').classList.toggle('on', state.accountValidation);
+  document.getElementById('toggle-accounts-label').textContent = state.accountValidation ? 'Enabled' : 'Disabled';
+  document.getElementById('accounts-upload-area').style.display = state.accountValidation ? 'block' : 'none';
+}
+
+function handleCsvUpload() {
+  var file = document.getElementById('accounts-csv').files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var lines = e.target.result.split('\n').filter(function(l) { return l.trim(); });
+    var accounts = {};
+    var errors = [];
+    lines.slice(1).forEach(function(line, i) { // skip header row
+      var parts = line.split(',');
+      if (parts.length < 2) { errors.push('Row ' + (i+2) + ': needs 2 columns'); return; }
+      var partner = parts[0].trim();
+      var account = parts.slice(1).join(',').trim().replace(/^"|"$/g, '');
+      if (state.partners.length > 0 && !state.partners.includes(partner)) {
+        errors.push('Row ' + (i+2) + ': partner "' + partner + '" not in your partners list');
+      }
+      if (!accounts[partner]) accounts[partner] = [];
+      accounts[partner].push(account);
+    });
+    var statusEl = document.getElementById('csv-status');
+    if (errors.length) {
+      var shown = errors.slice(0, 3);
+      var extra = errors.length > 3 ? '<br>&#8230;and ' + (errors.length - 3) + ' more' : '';
+      statusEl.innerHTML = '<span style="color:#ff6b6b;">&#9888; ' + shown.join('<br>') + extra + '</span>';
+    } else {
+      var total = Object.values(accounts).reduce(function(s,a) { return s + a.length; }, 0);
+      statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; ' + total + ' accounts loaded across ' + Object.keys(accounts).length + ' partners</span>';
+      state.accounts = accounts;
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Rooms toggle + render ──
+function toggleRooms() {
+  state.roomsEnabled = !state.roomsEnabled;
+  document.getElementById('toggle-rooms').classList.toggle('on', state.roomsEnabled);
+  document.getElementById('toggle-rooms-label').textContent = state.roomsEnabled ? 'Enabled' : 'Disabled';
+  document.getElementById('rooms-area').style.display = state.roomsEnabled ? 'block' : 'none';
+}
+
+function renderRoomsByDay() {
+  var container = document.getElementById('rooms-by-day');
+  container.innerHTML = state.days.map(function(day) {
+    var safeDay = escapeAttr(day.label);
+    return '<div class="rooms-day-group" data-day="' + safeDay + '" style="margin-bottom:24px;">' +
+      '<p style="font-weight:700;margin-bottom:10px;color:var(--gold);">' + escapeHtml(day.label) + '</p>' +
+      '<div class="row-list"></div>' +
+      '<button class="add-btn" onclick="addRoom(this)">+ Add Room</button>' +
+      '</div>';
+  }).join('');
+}
+
+function addRoom(btn) {
+  var group = btn.closest('.rooms-day-group');
+  var list = group.querySelector('.row-list');
+  var div = document.createElement('div');
+  div.className = 'row-item';
+  div.innerHTML =
+    '<input class="lf-input room-input" placeholder="Room name" />' +
+    '<button class="remove-btn" onclick="this.parentElement.remove()">Remove</button>';
+  list.appendChild(div);
+}
+
+// ── Resources toggle + management ──
+function toggleResources() {
+  state.resourcesEnabled = !state.resourcesEnabled;
+  document.getElementById('toggle-resources').classList.toggle('on', state.resourcesEnabled);
+  document.getElementById('toggle-resources-label').textContent = state.resourcesEnabled ? 'Enabled' : 'Disabled';
+  document.getElementById('resources-area').style.display = state.resourcesEnabled ? 'block' : 'none';
+}
+
+function addResourceSlot() {
+  var list = document.getElementById('resources-list');
+  if (list.children.length >= 5) { alert('Maximum 5 PDFs allowed.'); return; }
+  var idx = list.children.length;
+  var div = document.createElement('div');
+  div.className = 'card';
+  div.style.cssText = 'padding:20px;margin-bottom:12px;';
+  div.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+      '<span style="font-weight:700;">Resource ' + (idx+1) + '</span>' +
+      '<button class="remove-btn" onclick="this.closest(\'.card\').remove()">Remove</button>' +
+    '</div>' +
+    '<div class="lf-group">' +
+      '<label class="lf-label">Title <span class="lf-req">*</span></label>' +
+      '<input class="lf-input res-title" placeholder="e.g. Oracle vs SAP Battlecard" />' +
+    '</div>' +
+    '<div class="lf-group">' +
+      '<label class="lf-label">Description</label>' +
+      '<input class="lf-input res-desc" placeholder="Short description" />' +
+    '</div>' +
+    '<div class="lf-group">' +
+      '<label class="lf-label">PDF File <span class="lf-req">*</span> (max 10 MB)</label>' +
+      '<input type="file" accept=".pdf" class="lf-input res-file" onchange="checkPdfSize(this)" />' +
+      '<div class="res-size-err" style="color:#ff6b6b;font-size:12px;margin-top:4px;display:none;">File exceeds 10 MB limit.</div>' +
+    '</div>';
+  list.appendChild(div);
+}
+
+function checkPdfSize(input) {
+  var errEl = input.nextElementSibling;
+  if (input.files[0] && input.files[0].size > 10 * 1024 * 1024) {
+    errEl.style.display = 'block';
+    input.value = '';
+  } else {
+    errEl.style.display = 'none';
+  }
+}
+
+function collectResources() {
+  var slots = document.querySelectorAll('#resources-list .card');
+  var promises = Array.from(slots).map(function(slot) {
+    var title = slot.querySelector('.res-title').value.trim();
+    var desc = slot.querySelector('.res-desc').value.trim();
+    var fileInput = slot.querySelector('.res-file');
+    if (!title || !fileInput.files[0]) return Promise.resolve(null);
+    var file = fileInput.files[0];
+    return fileToBase64(file).then(function(base64) {
+      return { title: title, description: desc, filename: file.name, base64: base64 };
+    });
+  });
+  return Promise.all(promises).then(function(results) {
+    return results.filter(Boolean);
+  });
+}
+
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result.split(',')[1]); }; // strip data:...;base64,
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Repo name ──
+var repoCheckTimer = null;
+
+function autoFillRepo() {
+  var repoInput = document.getElementById('s7-repo');
+  if (!repoInput.value) {
+    var name = v('s1-name');
+    if (name) {
+      var suggested = name.toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
+      repoInput.value = suggested;
+      onRepoInput();
+    }
+  }
+}
+
+function onRepoInput() {
+  var val = document.getElementById('s7-repo').value.trim();
+  var statusEl = document.getElementById('repo-status');
+  var btn = document.getElementById('btn-step7-next');
+  var previewEl = document.getElementById('preview-url');
+
+  previewEl.textContent = val ? 'https://myrnagamal1.github.io/' + val : '—';
+
+  if (!val) { statusEl.textContent = ''; btn.disabled = true; return; }
+  if (!/^[a-z0-9-]+$/.test(val)) {
+    statusEl.innerHTML = '<span style="color:#ff6b6b;">Only lowercase letters, numbers, and hyphens allowed.</span>';
+    btn.disabled = true; return;
+  }
+
+  statusEl.innerHTML = '<span style="color:var(--muted);">Checking availability&#8230;</span>';
+  btn.disabled = true;
+  clearTimeout(repoCheckTimer);
+  repoCheckTimer = setTimeout(function() {
+    fetch(BACKEND_URL + '/check-repo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoName: val })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.available) {
+        statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; Available</span>';
+        btn.disabled = false;
+      } else {
+        statusEl.innerHTML = '<span style="color:#ff6b6b;">&#10007; Already taken &#8212; choose a different name.</span>';
+        btn.disabled = true;
+      }
+    })
+    .catch(function() {
+      statusEl.innerHTML = '<span style="color:#ff6b6b;">Could not check &#8212; please try again.</span>';
+      btn.disabled = true;
+    });
+  }, 600);
+}
+
+// ── Escape helpers ──
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// ── Review ──
+function renderReview() {
+  var el = document.getElementById('review-summary');
+  var repoName = v('s7-repo');
+  var rows = [
+    ['Event', escapeHtml(v('s1-name'))],
+    ['Country', escapeHtml(v('s1-country'))],
+    ['Days', state.days.map(function(d) { return escapeHtml(d.label); }).join(', ') || '—'],
+    ['Partners', state.partners.map(escapeHtml).join(', ') || '—'],
+    ['Lead Target', escapeHtml(v('s1-target'))],
+    ['Dashboard Password', escapeHtml(v('s1-password'))],
+    ['Account Validation', state.accountValidation ? 'Enabled' : 'Disabled'],
+    ['Rooms Section', state.roomsEnabled ? 'Enabled' : 'Disabled'],
+    ['Resources Section', state.resourcesEnabled ? 'Enabled' : 'Disabled'],
+  ];
+  el.innerHTML = rows.map(function(r) {
+    return '<p><strong style="color:var(--white);">' + r[0] + ':</strong> ' + r[1] + '</p>';
+  }).join('') +
+    '<p style="margin-top:12px;"><strong style="color:var(--white);">Repo:</strong> <span style="color:var(--teal2);">myrnagamal1/' + escapeHtml(repoName) + '</span></p>' +
+    '<p><strong style="color:var(--white);">Live URL:</strong> <span style="color:var(--teal2);">https://myrnagamal1.github.io/' + escapeHtml(repoName) + '</span></p>';
+}
+
+// ── Create event ──
+var CREATION_STEPS = [
+  'Creating GitHub repository',
+  'Uploading resources',
+  'Creating Google Sheet',
+  'Deploying Apps Script',
+  'Generating event app',
+  'Publishing to GitHub Pages'
+];
+
+function setProgressStep(idx, status) {
+  var items = document.querySelectorAll('.progress-item');
+  if (!items[idx]) return;
+  var icons = { pending: '&#9675;', active: '&#8987;', done: '&#10003;', error: '&#10007;' };
+  items[idx].className = 'progress-item ' + status;
+  items[idx].querySelector('.p-icon').innerHTML = icons[status] || '&#9675;';
+}
+
+function sleep(ms) {
+  return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+function createEvent() {
+  state.partners = collectPartners();
+  state.days = collectDays();
+  state.rooms = collectRooms();
+
+  // Hide nav, show progress
+  document.getElementById('review-nav-row').style.display = 'none';
+  document.getElementById('creation-progress').style.display = 'block';
+
+  var progressList = document.getElementById('progress-steps');
+  progressList.innerHTML = CREATION_STEPS.map(function(s) {
+    return '<li class="progress-item pending"><span class="p-icon">&#9675;</span> ' + escapeHtml(s) + '&#8230;</li>';
+  }).join('');
+
+  setProgressStep(0, 'active');
+
+  collectResources().then(function(resources) {
+    state.resources = resources;
+
+    var payload = {
+      eventName: v('s1-name'),
+      country: v('s1-country'),
+      phoneFormat: document.getElementById('s1-phone').value,
+      leadTarget: parseInt(v('s1-target')) || 65,
+      dashPassword: v('s1-password'),
+      days: state.days,
+      partners: state.partners,
+      accountValidation: state.accountValidation,
+      accounts: state.accounts,
+      rooms: state.roomsEnabled ? state.rooms : {},
+      resources: state.resourcesEnabled ? state.resources : [],
+      repoName: v('s7-repo')
+    };
+
+    // Animate progress steps while waiting for backend
+    var animIdx = 0;
+    var animTimer = setInterval(function() {
+      if (animIdx > 0) setProgressStep(animIdx - 1, 'done');
+      if (animIdx < CREATION_STEPS.length) {
+        setProgressStep(animIdx, 'active');
+        animIdx++;
+      } else {
+        clearInterval(animTimer);
+      }
+    }, 3000);
+
+    fetch(BACKEND_URL + '/create-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(res) {
+      clearInterval(animTimer);
+      return res.json().then(function(data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    })
+    .then(function(result) {
+      // Mark all steps done
+      for (var i = 0; i < CREATION_STEPS.length; i++) {
+        setProgressStep(i, result.ok && result.data.url ? 'done' : (i < animIdx ? 'done' : 'pending'));
+      }
+
+      var resultEl = document.getElementById('creation-result');
+      if (result.ok && result.data.url) {
+        var url = result.data.url;
+        resultEl.innerHTML =
+          '<div class="result-card success">' +
+            '<p style="font-size:20px;font-weight:800;margin-bottom:8px;">Your event is live!</p>' +
+            '<p style="color:var(--muted);font-size:14px;margin-bottom:4px;">Share this URL with your partners:</p>' +
+            '<div class="result-url">' + escapeHtml(url) + '</div>' +
+            '<p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Note: The app may take up to 1 minute to fully load for the first time.</p>' +
+            '<button class="copy-btn" id="copy-url-btn">Copy URL</button>' +
+            '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-left:12px;color:var(--teal2);font-size:13px;font-weight:700;">Open &#8594;</a>' +
+          '</div>';
+        document.getElementById('copy-url-btn').addEventListener('click', function() {
+          navigator.clipboard.writeText(url).then(function() {
+            document.getElementById('copy-url-btn').textContent = 'Copied!';
+          });
+        });
+      } else {
+        var failedStep = (result.data && result.data.failedStep) ? result.data.failedStep : 'Unknown step';
+        var errMsg = (result.data && result.data.error) ? result.data.error : 'Unknown error';
+        resultEl.innerHTML =
+          '<div class="result-card error">' +
+            '<p style="font-size:18px;font-weight:800;margin-bottom:8px;">Creation failed</p>' +
+            '<p style="color:#ff6b6b;font-size:14px;">Failed at: <strong>' + escapeHtml(failedStep) + '</strong></p>' +
+            '<p style="color:var(--muted);font-size:13px;margin-top:8px;">' + escapeHtml(errMsg) + '</p>' +
+            '<button class="btn-next" style="margin-top:20px;" onclick="location.reload()">Try Again</button>' +
+          '</div>';
+      }
+    })
+    .catch(function(err) {
+      clearInterval(animTimer);
+      document.getElementById('creation-result').innerHTML =
+        '<div class="result-card error">' +
+          '<p style="font-size:18px;font-weight:800;margin-bottom:8px;">Network error</p>' +
+          '<p style="color:var(--muted);font-size:13px;">' + escapeHtml(err.message) + '</p>' +
+          '<button class="btn-next" style="margin-top:20px;" onclick="location.reload()">Try Again</button>' +
+        '</div>';
+    });
+  });
+}
+
+// ── Init ──
+renderStepIndicator();
+addDay();
+addPartner();
+</script>
+</body>
+</html>
