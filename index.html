@@ -279,7 +279,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
     </div>
     <div class="nav-row" id="review-nav-row">
       <button class="btn-back" onclick="goBack(8)">&#8592; Back</button>
-      <button class="btn-next" id="btn-create" onclick="createEvent()">Create My Event &#8594;</button>
+      <button class="btn-next" id="btn-create" onclick="submitBlitzEvent()">Create My Event &#8594;</button>
     </div>
 
     <!-- Progress (shown during creation) -->
@@ -701,7 +701,7 @@ function sleep(ms) {
   return new Promise(function(resolve) { setTimeout(resolve, ms); });
 }
 
-function createEvent() {
+function submitBlitzEvent() {
   state.partners = collectPartners();
   state.days = collectDays();
   state.rooms = collectRooms();
