@@ -897,6 +897,12 @@ function submitBlitzEvent() {
       var resultEl = document.getElementById('creation-result');
       if (result.ok && result.data.url) {
         var url = result.data.url;
+        var deleteAfter = result.data.deleteAfter;
+        var deleteWarning = '';
+        if (deleteAfter) {
+          var deleteDateStr = new Date(deleteAfter).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          deleteWarning = '<p style="background:rgba(255,180,0,0.08);border:1px solid rgba(255,180,0,0.25);border-radius:6px;padding:10px 14px;color:rgba(255,200,60,0.9);font-size:12px;margin:16px 0 0;">⏳ This app will be <strong>automatically deleted on ' + escapeHtml(deleteDateStr) + '</strong> (5 days after the event ends). Download your leads Excel before then.</p>';
+        }
         resultEl.innerHTML =
           '<div class="result-card success">' +
             '<p style="font-size:20px;font-weight:800;margin-bottom:8px;">Your event is live!</p>' +
@@ -905,6 +911,7 @@ function submitBlitzEvent() {
             '<p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Note: The app may take up to 1 minute to fully load for the first time.</p>' +
             '<button class="copy-btn" id="copy-url-btn">Copy URL</button>' +
             '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-left:12px;color:var(--teal2);font-size:13px;font-weight:700;">Open &#8594;</a>' +
+            deleteWarning +
             '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:24px 0;">' +
             '<p style="color:var(--muted);font-size:12px;margin-bottom:10px;">When the event is over, delete the app and its data:</p>' +
             '<button id="btn-delete-event" style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.35);color:#ff6b6b;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;">&#128465; Delete Event</button>' +
