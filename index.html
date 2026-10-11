@@ -106,6 +106,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
   font-weight:700; transition:opacity 0.2s; }
 .copy-btn:hover { opacity:0.85; }
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="wizard-wrap">
@@ -203,7 +204,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
         <div class="lf-group">
           <label class="lf-label">Upload CSV <span class="lf-req">*</span></label>
           <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Two columns: <strong>Partner</strong> (must match partner names exactly) and <strong>Account Name</strong>.</p>
-          <input id="accounts-csv" type="file" accept=".csv" class="lf-input" onchange="handleCsvUpload()" />
+          <input id="accounts-csv" type="file" accept=".csv,.xls,.xlsx" class="lf-input" onchange="handleCsvUpload()" />
         </div>
         <div id="csv-status" style="font-size:13px;margin-top:8px;"></div>
       </div>
@@ -454,34 +455,53 @@ function toggleAccountVal() {
 function handleCsvUpload() {
   var file = document.getElementById('accounts-csv').files[0];
   if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var lines = e.target.result.split('\n').filter(function(l) { return l.trim(); });
-    var accounts = {};
-    var errors = [];
-    lines.slice(1).forEach(function(line, i) { // skip header row
-      var parts = line.split(',');
-      if (parts.length < 2) { errors.push('Row ' + (i+2) + ': needs 2 columns'); return; }
-      var partner = parts[0].trim();
-      var account = parts.slice(1).join(',').trim().replace(/^"|"$/g, '');
-      if (state.partners.length > 0 && !state.partners.includes(partner)) {
-        errors.push('Row ' + (i+2) + ': partner "' + partner + '" not in your partners list');
-      }
-      if (!accounts[partner]) accounts[partner] = [];
-      accounts[partner].push(account);
-    });
-    var statusEl = document.getElementById('csv-status');
-    if (errors.length) {
-      var shown = errors.slice(0, 3);
-      var extra = errors.length > 3 ? '<br>&#8230;and ' + (errors.length - 3) + ' more' : '';
-      statusEl.innerHTML = '<span style="color:#ff6b6b;">&#9888; ' + shown.join('<br>') + extra + '</span>';
-    } else {
-      var total = Object.values(accounts).reduce(function(s,a) { return s + a.length; }, 0);
-      statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; ' + total + ' accounts loaded across ' + Object.keys(accounts).length + ' partners</span>';
-      state.accounts = accounts;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'xls' || ext === 'xlsx') {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var workbook = XLSX.read(e.target.result, { type: 'array' });
+      var sheet = workbook.Sheets[workbook.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      processAccountRows(rows);
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var lines = e.target.result.split('\n').filter(function(l) { return l.trim(); });
+      var rows = lines.map(function(line) {
+        return line.split(',').map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+      });
+      processAccountRows(rows);
+    };
+    reader.readAsText(file);
+  }
+}
+
+function processAccountRows(rows) {
+  var accounts = {};
+  var errors = [];
+  rows.slice(1).forEach(function(parts, i) {
+    if (!parts[0] && !parts[1]) return;
+    if (!parts[1]) { errors.push('Row ' + (i+2) + ': needs 2 columns'); return; }
+    var partner = String(parts[0]).trim();
+    var account = String(parts[1]).trim();
+    if (state.partners.length > 0 && !state.partners.includes(partner)) {
+      errors.push('Row ' + (i+2) + ': partner "' + partner + '" not in your partners list');
     }
-  };
-  reader.readAsText(file);
+    if (!accounts[partner]) accounts[partner] = [];
+    accounts[partner].push(account);
+  });
+  var statusEl = document.getElementById('csv-status');
+  if (errors.length) {
+    var shown = errors.slice(0, 3);
+    var extra = errors.length > 3 ? '<br>&#8230;and ' + (errors.length - 3) + ' more' : '';
+    statusEl.innerHTML = '<span style="color:#ff6b6b;">&#9888; ' + shown.join('<br>') + extra + '</span>';
+  } else {
+    var total = Object.values(accounts).reduce(function(s,a) { return s + a.length; }, 0);
+    statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; ' + total + ' accounts loaded across ' + Object.keys(accounts).length + ' partners</span>';
+    state.accounts = accounts;
+  }
 }
 
 // ── Rooms toggle + render ──
