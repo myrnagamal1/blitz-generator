@@ -905,11 +905,33 @@ function submitBlitzEvent() {
             '<p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Note: The app may take up to 1 minute to fully load for the first time.</p>' +
             '<button class="copy-btn" id="copy-url-btn">Copy URL</button>' +
             '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-left:12px;color:var(--teal2);font-size:13px;font-weight:700;">Open &#8594;</a>' +
+            '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:24px 0;">' +
+            '<p style="color:var(--muted);font-size:12px;margin-bottom:10px;">When the event is over, delete the app and its data:</p>' +
+            '<button id="btn-delete-event" style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.35);color:#ff6b6b;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;">&#128465; Delete Event</button>' +
           '</div>';
         document.getElementById('copy-url-btn').addEventListener('click', function() {
           navigator.clipboard.writeText(url).then(function() {
             document.getElementById('copy-url-btn').textContent = 'Copied!';
           });
+        });
+        document.getElementById('btn-delete-event').addEventListener('click', function() {
+          var repoName = url.split('/').filter(Boolean).pop();
+          if (!confirm('Delete "' + repoName + '"?\n\nThis will permanently remove the GitHub repo and all collected leads. This cannot be undone.')) return;
+          var btn = document.getElementById('btn-delete-event');
+          btn.disabled = true; btn.textContent = 'Deleting…';
+          fetch(BACKEND + '/event/' + encodeURIComponent(repoName), { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(r) {
+              if (r.status === 'deleted') {
+                btn.style.background = 'rgba(0,200,100,0.12)';
+                btn.style.borderColor = 'rgba(0,200,100,0.35)';
+                btn.style.color = '#4ade80';
+                btn.textContent = '✓ Deleted';
+              } else {
+                btn.disabled = false; btn.textContent = '⚠ Error: ' + (r.error || 'unknown');
+              }
+            })
+            .catch(function(e) { btn.disabled = false; btn.textContent = '⚠ Network error'; });
         });
       } else {
         var failedStep = (result.data && result.data.failedStep) ? result.data.failedStep : 'Unknown step';
