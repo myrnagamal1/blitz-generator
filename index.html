@@ -165,6 +165,11 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
           <input id="s1-password" class="lf-input" type="text" placeholder="e.g. SAP2026" />
         </div>
       </div>
+      <div class="lf-group">
+        <label class="lf-label">Campaign Code <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <input id="s1-campaign" class="lf-input" placeholder="e.g. CMP-2026-BCN-001" />
+        <p style="color:var(--muted);font-size:12px;margin-top:6px;">Shown on the lead form with a one-click copy button so reps can paste it into CRM.</p>
+      </div>
     </div>
     <div class="nav-row"><button class="btn-next" onclick="goNext(1)">Next &#8594;</button></div>
   </div>
@@ -259,10 +264,17 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
     <div class="card">
       <div class="card-title">Event Agenda</div>
       <div class="card-desc">Add the time slots for each day. The last day automatically gets "Announcing the Winners" at the end.</div>
+      <div style="background:rgba(0,158,167,0.08);border:1px solid rgba(0,158,167,0.2);border-radius:12px;padding:16px;margin-bottom:18px;">
+        <p style="color:var(--teal2);font-size:13px;font-weight:600;margin:0 0 10px;">&#128247; Import from image</p>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 10px;">Upload a screenshot of your agenda and it will be extracted automatically.</p>
+        <input id="agenda-img-input" type="file" accept="image/*" class="lf-input" style="font-size:12px;" onchange="handleAgendaImage()" />
+        <div id="agenda-img-status" style="font-size:12px;margin-top:8px;"></div>
+      </div>
       <div id="agenda-by-day"></div>
     </div>
     <div class="nav-row">
       <button class="btn-back" onclick="goBack(6)">&#8592; Back</button>
+      <button class="btn-next" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:var(--muted);" onclick="state.agenda={};goNext(6)">Skip (no agenda)</button>
       <button class="btn-next" onclick="goNext(6)">Next &#8594;</button>
     </div>
   </div>
@@ -331,6 +343,7 @@ const BACKEND_URL = 'https://blitz-backend.cfapps.eu10-004.hana.ondemand.com';
 var state = {
   currentStep: 1,
   totalSteps: 9,
+  campaignCode: '',
   days: [],
   partners: [],
   sdes: [],
@@ -511,6 +524,45 @@ function collectAgenda() {
     agenda[day.label] = slots;
   });
   return agenda;
+}
+
+async function handleAgendaImage() {
+  var file = document.getElementById('agenda-img-input').files[0];
+  var statusEl = document.getElementById('agenda-img-status');
+  if (!file) return;
+  statusEl.innerHTML = '<span style="color:var(--teal2);">&#9679; Extracting agenda…</span>';
+
+  // Read image as base64
+  var base64 = await new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+    reader.readAsDataURL(file);
+  });
+
+  var dayLabels = state.days.map(function(d) { return d.label; });
+  var prompt = 'Extract the agenda from this image. Return ONLY valid JSON in this exact format, no explanation:\n' +
+    '{"Day Label": [{"start":"HH:MM","end":"HH:MM","label":"Session name"}, ...], ...}\n' +
+    'Use these exact day labels as keys (match by day number/order): ' + JSON.stringify(dayLabels) + '\n' +
+    'If a slot has no end time, estimate or leave end same as start. Output raw JSON only.';
+
+  try {
+    var resp = await fetch('https://blitz-backend.cfapps.eu10-004.hana.ondemand.com/extract-agenda', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64, mimeType: file.type, prompt: prompt, days: dayLabels })
+    });
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    var extracted = typeof data.agenda === 'string' ? JSON.parse(data.agenda) : data.agenda;
+    // Merge extracted into state.agenda
+    Object.keys(extracted).forEach(function(key) { state.agenda[key] = extracted[key]; });
+    // Re-render agenda UI
+    renderAgendaByDay();
+    var total = Object.values(extracted).reduce(function(s, slots) { return s + slots.length; }, 0);
+    statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; Extracted ' + total + ' slots — review and adjust below</span>';
+  } catch(e) {
+    statusEl.innerHTML = '<span style="color:#ff6b6b;">&#9888; Could not extract: ' + e.message + '. Please fill in manually.</span>';
+  }
 }
 
 // ── Day management ──
@@ -853,6 +905,7 @@ function renderReview() {
     ['SDEs', state.sdes.length > 0 ? state.sdes.map(escapeHtml).join(', ') : 'None'],
     ['Lead Target', escapeHtml(v('s1-target'))],
     ['Dashboard Password', escapeHtml(v('s1-password'))],
+    ['Campaign Code', v('s1-campaign') ? escapeHtml(v('s1-campaign')) : 'None'],
     ['Account Validation', state.accountValidation ? 'Enabled' : 'Disabled'],
     ['Rooms Section', state.roomsEnabled ? 'Enabled' : 'Disabled'],
     ['Resources Section', state.resourcesEnabled ? 'Enabled' : 'Disabled'],
@@ -911,6 +964,7 @@ function submitBlitzEvent() {
       phoneFormat: document.getElementById('s1-phone').value,
       leadTarget: parseInt(v('s1-target')) || 65,
       dashPassword: v('s1-password'),
+      campaignCode: v('s1-campaign').trim(),
       days: state.days,
       partners: state.partners,
       accountValidation: state.accountValidation,
