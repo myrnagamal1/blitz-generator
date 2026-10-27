@@ -190,12 +190,20 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
       <div class="card-desc">Add the partner companies participating in this event.</div>
       <div class="row-list" id="partners-list"></div>
       <button class="add-btn" onclick="addPartner()">+ Add Partner</button>
+      <div style="margin-top:14px;">
+        <textarea id="partners-bulk" class="lf-input" rows="3" placeholder="Or paste a list — one partner per line" style="width:100%;resize:vertical;font-size:13px;"></textarea>
+        <button class="add-btn" style="margin-top:6px;" onclick="bulkAdd('partners-bulk','partner')">+ Add All</button>
+      </div>
     </div>
     <div class="card" style="margin-top:16px;">
       <div class="card-title">SAP SDEs</div>
       <div class="card-desc">Add the SAP Digital Engagement team members supporting this event. They will each get a personal tab in the Manager Dashboard to accept and track their leads.</div>
       <div class="row-list" id="sde-list"></div>
       <button class="add-btn" onclick="addSde()">+ Add SDE</button>
+      <div style="margin-top:14px;">
+        <textarea id="sdes-bulk" class="lf-input" rows="3" placeholder="Or paste a list — one SDE name per line" style="width:100%;resize:vertical;font-size:13px;"></textarea>
+        <button class="add-btn" style="margin-top:6px;" onclick="bulkAdd('sdes-bulk','sde')">+ Add All</button>
+      </div>
     </div>
     <div class="nav-row">
       <button class="btn-back" onclick="goBack(3)">&#8592; Back</button>
@@ -546,6 +554,16 @@ function collectSdes() {
   return Array.from(document.querySelectorAll('.sde-input'))
     .map(function(i) { return i.value.trim(); })
     .filter(function(v) { return v; });
+}
+
+function bulkAdd(textareaId, type) {
+  var ta = document.getElementById(textareaId);
+  var lines = ta.value.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+  lines.forEach(function(line) {
+    if (type === 'partner') addPartner(line);
+    else if (type === 'sde') addSde(line);
+  });
+  ta.value = '';
 }
 
 function escapeAttr(str) {
