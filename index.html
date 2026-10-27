@@ -215,7 +215,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
       <div id="accounts-upload-area" style="display:none;">
         <div class="lf-group">
           <label class="lf-label">Upload CSV <span class="lf-req">*</span></label>
-          <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Two columns: <strong>Partner</strong> (must match partner names exactly) and <strong>Account Name</strong>.</p>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Two or three columns: <strong>Partner</strong> (must match partner names exactly), <strong>Account Name</strong>, and optionally <strong>SDE Name</strong> (auto-assigns the account to that SDE's tab in the Manager Dashboard).</p>
           <input id="accounts-csv" type="file" accept=".csv,.xls,.xlsx" class="lf-input" onchange="handleCsvUpload()" />
         </div>
         <div id="csv-status" style="font-size:13px;margin-top:8px;"></div>
@@ -328,6 +328,7 @@ var state = {
   sdes: [],
   accountValidation: false,
   accounts: {},
+  sdeAccountMap: {},
   roomsEnabled: true,
   rooms: {},
   agenda: {},
@@ -587,28 +588,66 @@ function handleCsvUpload() {
 
 function processAccountRows(rows) {
   var accounts = {};
-  var errors = [];
-  rows.slice(1).forEach(function(parts, i) {
-    if (!parts[0] && !parts[1]) return;
-    if (!parts[1]) { errors.push('Row ' + (i+2) + ': needs 2 columns'); return; }
-    var partner = String(parts[0]).trim();
-    var account = String(parts[1]).trim();
-    if (state.partners.length > 0 && !state.partners.includes(partner)) {
-      errors.push('Row ' + (i+2) + ': partner "' + partner + '" not in your partners list');
-    }
-    if (!accounts[partner]) accounts[partner] = [];
-    accounts[partner].push(account);
-  });
-  var statusEl = document.getElementById('csv-status');
-  if (errors.length) {
-    var shown = errors.slice(0, 3);
-    var extra = errors.length > 3 ? '<br>&#8230;and ' + (errors.length - 3) + ' more' : '';
-    statusEl.innerHTML = '<span style="color:#ff6b6b;">&#9888; ' + shown.join('<br>') + extra + '</span>';
-  } else {
-    var total = Object.values(accounts).reduce(function(s,a) { return s + a.length; }, 0);
-    statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; ' + total + ' accounts loaded across ' + Object.keys(accounts).length + ' partners</span>';
-    state.accounts = accounts;
+  var sdeAccountMap = {}; // { accountName: sdeName }
+  var sdeCount = 0;
+
+  // Build a lowercase set of partner names for case-insensitive matching
+  var partnerNamesLower = state.partners.map(function(p) { return p.toLowerCase(); });
+
+  // Auto-detect header row: skip row 0 if col1 looks like a header label
+  // (i.e. doesn't match any partner and doesn't look like a real account entry)
+  var startRow = 0;
+  if (rows.length > 0) {
+    var firstCol1 = rows[0][0] ? String(rows[0][0]).trim().toLowerCase() : '';
+    var firstCol2 = rows[0][1] ? String(rows[0][1]).trim().toLowerCase() : '';
+    var isHeader = (firstCol1 === 'partner' || firstCol1 === 'partner name' ||
+                    firstCol2 === 'account' || firstCol2 === 'account name');
+    if (isHeader) startRow = 1;
   }
+
+  rows.slice(startRow).forEach(function(parts) {
+    if (!parts[0] && !parts[1]) return;
+    if (!parts[0] || !parts[1]) return;
+    var col1    = String(parts[0]).trim();
+    var account = String(parts[1]).trim();
+    var col3    = parts[2] ? String(parts[2]).trim() : '';
+
+    // Determine if col1 is a partner or an SDE:
+    // - If partners list is empty, treat all col1 as partners
+    // - If col1 matches a partner (case-insensitive), it's a partner
+    // - Otherwise it's an SDE name
+    var col1Lower = col1.toLowerCase();
+    var matchedPartner = null;
+    if (state.partners.length === 0) {
+      matchedPartner = col1;
+    } else {
+      var idx = partnerNamesLower.indexOf(col1Lower);
+      if (idx !== -1) {
+        matchedPartner = state.partners[idx]; // use canonical casing from wizard
+      }
+    }
+
+    if (matchedPartner) {
+      // It's a partner → add to accounts
+      if (!accounts[matchedPartner]) accounts[matchedPartner] = [];
+      accounts[matchedPartner].push(account);
+      // If there's also a col3 SDE assignment, record it
+      if (col3) { sdeAccountMap[account] = col3; sdeCount++; }
+    } else {
+      // col1 is an SDE name → map account → SDE
+      sdeAccountMap[account] = col1;
+      sdeCount++;
+    }
+  });
+
+  var statusEl = document.getElementById('csv-status');
+  var partnerCount = Object.keys(accounts).length;
+  var accountTotal = Object.values(accounts).reduce(function(s,a) { return s + a.length; }, 0);
+  var sdeNote = sdeCount > 0 ? ', ' + sdeCount + ' SDE assignments' : '';
+  var partnerNote = partnerCount > 0 ? accountTotal + ' accounts across ' + partnerCount + ' partners' : '0 partner accounts';
+  statusEl.innerHTML = '<span style="color:var(--teal2);">&#10003; ' + partnerNote + sdeNote + '</span>';
+  state.accounts = accounts;
+  state.sdeAccountMap = sdeAccountMap;
 }
 
 // ── Rooms toggle + render ──
@@ -858,6 +897,7 @@ function submitBlitzEvent() {
       partners: state.partners,
       accountValidation: state.accountValidation,
       accounts: state.accounts,
+      sdeAccountMap: state.sdeAccountMap,
       rooms: state.roomsEnabled ? state.rooms : {},
       agenda: state.agenda,
       sdes: state.sdes,
