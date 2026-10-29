@@ -118,8 +118,39 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
 
   <div class="step-indicator" id="step-indicator"></div>
 
+  <!-- Mode selector (shown before step 1) -->
+  <div id="mode-selector">
+    <div class="card" style="text-align:center;padding:40px 32px;">
+      <div class="card-title" style="font-size:22px;margin-bottom:8px;">What would you like to do?</div>
+      <div class="card-desc" style="margin-bottom:32px;">Create a brand-new event or update an existing one.</div>
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn-next" onclick="startCreate()" style="min-width:180px;">
+          &#43; Create New Event
+        </button>
+        <button class="btn-next" onclick="showEditPanel()" style="min-width:180px;background:rgba(0,158,167,0.15);border:1px solid rgba(0,200,212,0.4);">
+          &#9998; Edit Existing Event
+        </button>
+      </div>
+    </div>
+    <div id="edit-panel" style="display:none;">
+      <div class="card">
+        <div class="card-title">Edit Existing Event</div>
+        <div class="card-desc">Enter the repo name of the event you want to update.</div>
+        <div class="lf-group">
+          <label class="lf-label">Repo Name <span class="lf-req">*</span></label>
+          <input id="edit-repo-input" class="lf-input" placeholder="e.g. finance-services-blitz" />
+        </div>
+        <div id="edit-load-status" style="font-size:13px;min-height:20px;margin-bottom:16px;"></div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <button class="btn-back" onclick="document.getElementById('edit-panel').style.display='none'">Cancel</button>
+          <button class="btn-next" onclick="loadEventForEdit()">Load Event &#8594;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Step 1: Event Basics -->
-  <div class="step-panel active" id="step-1">
+  <div class="step-panel" id="step-1">
     <div class="card">
       <div class="card-title">Event Basics</div>
       <div class="card-desc">Core details about your Blitz Day event.</div>
@@ -320,7 +351,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
   <!-- Step 9: Review & Create -->
   <div class="step-panel" id="step-9">
     <div class="card">
-      <div class="card-title">Review &amp; Create</div>
+      <div class="card-title" id="review-title">Review &amp; Create</div>
       <div id="review-summary" style="color:var(--muted);font-size:14px;line-height:1.8;"></div>
     </div>
     <div class="nav-row" id="review-nav-row">
@@ -343,6 +374,8 @@ const BACKEND_URL = 'https://blitz-backend.cfapps.eu10-004.hana.ondemand.com';
 var state = {
   currentStep: 1,
   totalSteps: 9,
+  editMode: false,
+  editRepoName: '',
   campaignCode: '',
   days: [],
   partners: [],
@@ -356,6 +389,179 @@ var state = {
   resourcesEnabled: true,
   resources: []
 };
+
+// ── Mode selector ──
+function startCreate() {
+  state.editMode = false;
+  state.editRepoName = '';
+  document.getElementById('mode-selector').style.display = 'none';
+  document.getElementById('review-title').textContent = 'Review & Create';
+  document.getElementById('btn-create').textContent = 'Create My Event →';
+  document.getElementById('btn-create').onclick = submitBlitzEvent;
+  // Show repo step normally
+  document.getElementById('step-8').style.display = '';
+  showStep(1);
+}
+
+function showEditPanel() {
+  document.getElementById('edit-panel').style.display = '';
+  document.getElementById('edit-repo-input').focus();
+}
+
+async function loadEventForEdit() {
+  var repoName = document.getElementById('edit-repo-input').value.trim().toLowerCase();
+  var statusEl = document.getElementById('edit-load-status');
+  if (!repoName) { statusEl.innerHTML = '<span style="color:#ff6b6b;">Please enter a repo name.</span>'; return; }
+  statusEl.innerHTML = '<span style="color:var(--muted);">Loading…</span>';
+  try {
+    var resp = await fetch(BACKEND_URL + '/load-event/' + repoName);
+    if (!resp.ok) { var e = await resp.json(); throw new Error(e.error || 'Not found'); }
+    var data = await resp.json();
+    var html = data.html;
+
+    // Extract constants via regex
+    function extractConst(name, isJson) {
+      var re = new RegExp('const ' + name + '\\s*=\\s*(' + (isJson ? '[\\[\\{].+?[\\]\\}]' : "'[^']*'") + ')\\s*;');
+      var m = html.match(re);
+      if (!m) return isJson ? null : '';
+      return isJson ? JSON.parse(m[1]) : m[1].slice(1, -1);
+    }
+    function extractConstStr(name) {
+      var re = new RegExp('const ' + name + "\\s*=\\s*'([^']*)'\\s*;");
+      var m = html.match(re);
+      return m ? m[1] : '';
+    }
+    function extractConstNum(name) {
+      var re = new RegExp('const ' + name + '\\s*=\\s*([0-9]+)\\s*;');
+      var m = html.match(re);
+      return m ? parseInt(m[1]) : null;
+    }
+    function extractConstBool(name) {
+      var re = new RegExp('const ' + name + '\\s*=\\s*(true|false)\\s*;');
+      var m = html.match(re);
+      return m ? m[1] === 'true' : false;
+    }
+
+    var eventName   = extractConstStr('EVENT_NAME');
+    var country     = extractConstStr('COUNTRY');
+    var dashPass    = extractConstStr('DASH_PASS');
+    var campaignCode= extractConstStr('CAMPAIGN_CODE');
+    var leadTarget  = extractConstNum('LEAD_TARGET') || 65;
+    var partners    = extractConst('PARTNERS', true) || [];
+    var days        = extractConst('DAYS', true) || [];
+    var sdes        = extractConst('SDES', true) || [];
+    var agenda      = extractConst('AGENDA', true) || {};
+    var rooms       = extractConst('ROOMS', true) || null;
+    var acctEnabled = extractConstBool('ACCOUNT_VALIDATION_ENABLED');
+    var roomsEnabled= extractConstBool('ROOMS_ENABLED');
+    var resEnabled  = extractConstBool('RESOURCES_ENABLED');
+
+    // Extract phone format from PHONE_HINT
+    var phoneHint = extractConstStr('PHONE_HINT');
+    var phoneFormat = 'generic';
+    var phoneMap = {
+      '01': 'egypt', '05': 'uae', '06': 'morocco', '07': 'jordan',
+      '+965': 'kuwait', '+973': 'bahrain', '+974': 'qatar', '+968': 'oman',
+      '+216': 'tunisia', '+2135': 'algeria', '+2189': 'libya',
+      '+491': 'germany', '+336': 'france', '+447': 'uk', '+346': 'spain',
+      '+393': 'italy', '+316': 'netherlands', '+9665': 'saudi-arabia', '+9715': 'uae'
+    };
+    for (var k in phoneMap) {
+      if (phoneHint && phoneHint.indexOf(k) !== -1) { phoneFormat = phoneMap[k]; break; }
+    }
+
+    // Set state
+    state.editMode = true;
+    state.editRepoName = repoName;
+    state.days = days;
+    state.partners = partners;
+    state.sdes = sdes;
+    state.agenda = agenda || {};
+    state.rooms = rooms || {};
+    state.roomsEnabled = roomsEnabled;
+    state.resourcesEnabled = resEnabled;
+    state.accountValidation = acctEnabled;
+
+    // Pre-fill step 1
+    document.getElementById('s1-name').value = eventName;
+    document.getElementById('s1-country').value = country;
+    document.getElementById('s1-password').value = dashPass;
+    document.getElementById('s1-target').value = leadTarget;
+    document.getElementById('s1-campaign').value = campaignCode;
+    document.getElementById('s1-phone').value = phoneFormat;
+
+    // Hide repo step (not needed for edit)
+    document.getElementById('step-8').style.display = 'none';
+    state.totalSteps = 9; // keep indicator but skip step 8
+
+    // Update review button
+    document.getElementById('review-title').textContent = 'Review & Update';
+    document.getElementById('btn-create').textContent = 'Update Event →';
+    document.getElementById('btn-create').onclick = updateBlitzEvent;
+
+    // Switch to wizard
+    document.getElementById('mode-selector').style.display = 'none';
+    showStep(1);
+    statusEl.innerHTML = '';
+  } catch(e) {
+    statusEl.innerHTML = '<span style="color:#ff6b6b;">' + e.message + '</span>';
+  }
+}
+
+// ── Update event (edit mode submit) ──
+async function updateBlitzEvent() {
+  state.partners = collectPartners();
+  state.days = collectDays();
+  state.rooms = collectRooms();
+
+  document.getElementById('review-nav-row').style.display = 'none';
+  document.getElementById('creation-progress').style.display = 'block';
+
+  var progressList = document.getElementById('progress-steps');
+  progressList.innerHTML = '<li class="progress-item active"><span class="p-icon">&#8987;</span> Generating updated event app…</li>';
+
+  try {
+    var resources = await collectResources();
+    state.resources = resources;
+
+    var payload = {
+      eventName: v('s1-name'),
+      country: v('s1-country'),
+      phoneFormat: document.getElementById('s1-phone').value,
+      leadTarget: parseInt(v('s1-target')) || 65,
+      dashPassword: v('s1-password'),
+      campaignCode: v('s1-campaign').trim(),
+      days: state.days,
+      partners: state.partners,
+      accountValidation: state.accountValidation,
+      accounts: state.accounts,
+      sdeAccountMap: state.sdeAccountMap,
+      rooms: state.roomsEnabled ? state.rooms : {},
+      agenda: state.agenda,
+      sdes: state.sdes,
+      resources: state.resourcesEnabled ? state.resources : [],
+      repoName: state.editRepoName
+    };
+
+    var resp = await fetch(BACKEND_URL + '/update-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Update failed');
+
+    progressList.innerHTML = '<li class="progress-item done"><span class="p-icon">&#10003;</span> Event updated successfully!</li>';
+    document.getElementById('creation-result').innerHTML =
+      '<div style="margin-top:24px;padding:24px;background:rgba(0,200,212,0.08);border:1px solid rgba(0,200,212,0.25);border-radius:16px;text-align:center;">' +
+      '<p style="font-size:18px;font-weight:800;color:var(--teal2);margin-bottom:8px;">&#10003; Event Updated!</p>' +
+      '<a href="' + data.url + '" target="_blank" style="color:var(--teal2);word-break:break-all;">' + data.url + '</a>' +
+      '</div>';
+  } catch(e) {
+    progressList.innerHTML = '<li class="progress-item error"><span class="p-icon">&#10007;</span> ' + escapeHtml(e.message) + '</li>';
+    document.getElementById('review-nav-row').style.display = 'flex';
+  }
+}
 
 // ── Step indicator ──
 function renderStepIndicator() {
@@ -373,12 +579,16 @@ function renderStepIndicator() {
 function goNext(from) {
   if (!validateStep(from)) return;
   collectStep(from);
-  state.currentStep = from + 1;
+  var next = from + 1;
+  if (state.editMode && next === 8) next = 9;
+  state.currentStep = next;
   showStep(state.currentStep);
 }
 
 function goBack(from) {
-  state.currentStep = from - 1;
+  var prev = from - 1;
+  if (state.editMode && prev === 8) prev = 7;
+  state.currentStep = prev;
   showStep(state.currentStep);
 }
 
@@ -420,6 +630,7 @@ function validateStep(n) {
     }
   }
   if (n === 8) {
+    if (state.editMode) return true;
     var repoVal = v('s7-repo');
     if (!repoVal) { alert('Please enter a repo name.'); return false; }
     if (!/^[a-z0-9-]+$/.test(repoVal)) {
@@ -896,7 +1107,7 @@ function escapeHtml(str) {
 // ── Review ──
 function renderReview() {
   var el = document.getElementById('review-summary');
-  var repoName = v('s7-repo');
+  var repoName = state.editMode ? state.editRepoName : v('s7-repo');
   var rows = [
     ['Event', escapeHtml(v('s1-name'))],
     ['Country', escapeHtml(v('s1-country'))],
