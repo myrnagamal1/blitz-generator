@@ -368,7 +368,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
 </div>
 
 <script>
-const BACKEND_URL = 'https://blitz-backend.cfapps.eu10-004.hana.ondemand.com';
+const BACKEND_URL = 'https://blitz-backend-funny-crocodile-sx.cfapps.eu10-004.hana.ondemand.com';
 
 // ── State ──
 var state = {
@@ -757,7 +757,7 @@ async function handleAgendaImage() {
     'If a slot has no end time, estimate or leave end same as start. Output raw JSON only.';
 
   try {
-    var resp = await fetch('https://blitz-backend.cfapps.eu10-004.hana.ondemand.com/extract-agenda', {
+    var resp = await fetch(BACKEND_URL + '/extract-agenda', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: base64, mimeType: file.type, prompt: prompt, days: dayLabels })
