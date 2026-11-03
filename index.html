@@ -199,6 +199,10 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
       <div class="lf-group">
         <label class="lf-label">Campaign Code <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
         <input id="s1-campaign" class="lf-input" placeholder="e.g. CMP-2026-BCN-001" />
+      </div>
+      <div class="lf-group">
+        <label class="lf-label">Survey / Feedback Link <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <input id="s1-survey" class="lf-input" placeholder="https://forms.office.com/..." />
         <p style="color:var(--muted);font-size:12px;margin-top:6px;">Shown on the lead form with a one-click copy button so reps can paste it into CRM.</p>
       </div>
     </div>
@@ -445,6 +449,8 @@ function populateWizardFromState() {
   if (resToggle) resToggle.checked = !!state.resourcesEnabled;
   var phoneMandToggle = document.getElementById('s1-phone-mandatory');
   if (phoneMandToggle) phoneMandToggle.checked = (state.phoneMandatory !== false);
+  var surveyEl = document.getElementById('s1-survey');
+  if (surveyEl) surveyEl.value = state.surveyUrl || '';
 }
 
 async function loadEventForEdit() {
@@ -527,6 +533,7 @@ async function loadEventForEdit() {
     document.getElementById('s1-password').value = dashPass;
     document.getElementById('s1-target').value = leadTarget;
     document.getElementById('s1-campaign').value = campaignCode;
+    document.getElementById('s1-survey').value = extractConstStr('SURVEY_URL');
     document.getElementById('s1-phone').value = phoneFormat;
 
     // Hide repo step (not needed for edit)
@@ -571,6 +578,7 @@ async function updateBlitzEvent() {
       leadTarget: parseInt(v('s1-target')) || 65,
       dashPassword: v('s1-password'),
       campaignCode: v('s1-campaign').trim(),
+        surveyUrl: v('s1-survey').trim(),
       days: state.days,
       partners: state.partners,
       accountValidation: state.accountValidation,
@@ -581,6 +589,7 @@ async function updateBlitzEvent() {
       sdes: state.sdes,
       resources: state.resourcesEnabled ? state.resources : [],
         phoneMandatory: state.phoneMandatory !== false,
+        surveyUrl: state.surveyUrl || '',
       repoName: state.editRepoName
     };
 
@@ -1168,6 +1177,7 @@ function renderReview() {
     ['Lead Target', escapeHtml(v('s1-target'))],
     ['Dashboard Password', escapeHtml(v('s1-password'))],
     ['Campaign Code', v('s1-campaign') ? escapeHtml(v('s1-campaign')) : 'None'],
+        ['Survey Link', v('s1-survey') ? escapeHtml(v('s1-survey')) : 'None'],
     ['Account Validation', state.accountValidation ? 'Enabled' : 'Disabled'],
     ['Rooms Section', state.roomsEnabled ? 'Enabled' : 'Disabled'],
     ['Resources Section', state.resourcesEnabled ? 'Enabled' : 'Disabled'],
@@ -1227,6 +1237,7 @@ function submitBlitzEvent() {
       leadTarget: parseInt(v('s1-target')) || 65,
       dashPassword: v('s1-password'),
       campaignCode: v('s1-campaign').trim(),
+        surveyUrl: v('s1-survey').trim(),
       days: state.days,
       partners: state.partners,
       accountValidation: state.accountValidation,
@@ -1237,6 +1248,7 @@ function submitBlitzEvent() {
       sdes: state.sdes,
       resources: state.resourcesEnabled ? state.resources : [],
         phoneMandatory: state.phoneMandatory !== false,
+        surveyUrl: state.surveyUrl || '',
       repoName: v('s7-repo')
     };
 
