@@ -7,8 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --gold: #FFC300; --gold2: #FFD700;
-  --teal: #009EA7; --teal2: #00C8D4;
+  --gold: #6B3FA8; --gold2: #7B4FBF;
+  --teal: #4A7FD4; --teal2: #5B8FE4;
   --night: #070B1A; --night2: #0D1428;
   --white: #FFFFFF; --muted: rgba(255,255,255,0.55);
 }
@@ -26,8 +26,8 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
 .step-dot { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.2);
   display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
   color:var(--muted); transition:all 0.3s; cursor:default; }
-.step-dot.active { border-color:var(--teal); color:var(--teal2); background:rgba(0,200,212,0.12); }
-.step-dot.done { border-color:var(--gold); background:rgba(255,195,0,0.15); color:var(--gold); }
+.step-dot.active { border-color:var(--teal); color:var(--teal2); background:rgba(74,127,212,0.12); }
+.step-dot.done { border-color:var(--gold); background:rgba(107,63,168,0.15); color:var(--gold); }
 
 /* Step panels */
 .step-panel { display:none; }
@@ -59,10 +59,10 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
   color:#ff6b6b; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px;
   font-weight:700; transition:background 0.2s; white-space:nowrap; }
 .remove-btn:hover { background:rgba(255,100,100,0.25); }
-.add-btn { background:rgba(0,158,167,0.12); border:1px solid rgba(0,200,212,0.3);
+.add-btn { background:rgba(74,127,212,0.12); border:1px solid rgba(74,127,212,0.3);
   color:var(--teal2); border-radius:8px; padding:10px 20px; cursor:pointer; font-size:13px;
   font-weight:700; transition:background 0.2s; }
-.add-btn:hover { background:rgba(0,158,167,0.22); }
+.add-btn:hover { background:rgba(74,127,212,0.22); }
 
 /* Toggle */
 .toggle-wrap { display:flex; align-items:center; gap:14px; margin-bottom:20px; cursor:pointer; }
@@ -80,11 +80,11 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
   color:var(--white); border-radius:50px; padding:12px 28px; cursor:pointer;
   font-family:'Sora',sans-serif; font-size:14px; font-weight:700; transition:border-color 0.2s; }
 .btn-back:hover { border-color:rgba(255,255,255,0.5); }
-.btn-next { background:linear-gradient(135deg,#FFC300,#FFD700); color:#1A1200;
+.btn-next { background:linear-gradient(135deg,#6B3FA8,#4A7FD4); color:#ffffff;
   border:none; border-radius:50px; padding:12px 32px; cursor:pointer;
   font-family:'Sora',sans-serif; font-size:14px; font-weight:800;
-  box-shadow:0 4px 16px rgba(255,195,0,0.3); transition:all 0.2s; }
-.btn-next:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(255,195,0,0.32); }
+  box-shadow:0 4px 16px rgba(107,63,168,0.3); transition:all 0.2s; }
+.btn-next:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(107,63,168,0.32); }
 .btn-next:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
 
 /* Progress bar (creation step) */
@@ -97,7 +97,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
 
 /* Success / error cards */
 .result-card { border-radius:16px; padding:28px; text-align:center; margin-top:24px; }
-.result-card.success { background:rgba(0,158,167,0.15); border:1px solid rgba(0,200,212,0.35); }
+.result-card.success { background:rgba(74,127,212,0.15); border:1px solid rgba(74,127,212,0.35); }
 .result-card.error { background:rgba(255,100,100,0.1); border:1px solid rgba(255,100,100,0.3); }
 .result-url { font-size:16px; font-weight:700; color:var(--teal2); word-break:break-all;
   margin:16px 0; }
@@ -111,7 +111,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
 <body>
 <div class="wizard-wrap">
   <div class="wizard-header">
-    <p style="color:var(--teal2);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">SAP PARTNER BLITZ DAY</p>
+    <p style="color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">SAP PARTNER BLITZ DAY</p>
     <h1>Event <span>Generator</span></h1>
     <p style="color:var(--muted);margin-top:12px;font-size:15px;">Fill in your event details and get a live app in 30 seconds.</p>
   </div>
@@ -127,7 +127,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
         <button class="btn-next" onclick="startCreate()" style="min-width:180px;">
           &#43; Create New Event
         </button>
-        <button class="btn-next" onclick="showEditPanel()" style="min-width:180px;background:rgba(0,158,167,0.15);border:1px solid rgba(0,200,212,0.4);">
+        <button class="btn-next" onclick="showEditPanel()" style="min-width:180px;background:rgba(74,127,212,0.15);border:1px solid rgba(74,127,212,0.4);">
           &#9998; Edit Existing Event
         </button>
       </div>
@@ -295,7 +295,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
     <div class="card">
       <div class="card-title">Event Agenda</div>
       <div class="card-desc">Add the time slots for each day. The last day automatically gets "Announcing the Winners" at the end.</div>
-      <div style="background:rgba(0,158,167,0.08);border:1px solid rgba(0,158,167,0.2);border-radius:12px;padding:16px;margin-bottom:18px;">
+      <div style="background:rgba(74,127,212,0.08);border:1px solid rgba(74,127,212,0.2);border-radius:12px;padding:16px;margin-bottom:18px;">
         <p style="color:var(--teal2);font-size:13px;font-weight:600;margin:0 0 10px;">&#128247; Import from image</p>
         <p style="color:var(--muted);font-size:12px;margin:0 0 10px;">Upload a screenshot of your agenda and it will be extracted automatically.</p>
         <input id="agenda-img-input" type="file" accept="image/*" class="lf-input" style="font-size:12px;" onchange="handleAgendaImage()" />
@@ -553,7 +553,7 @@ async function updateBlitzEvent() {
 
     progressList.innerHTML = '<li class="progress-item done"><span class="p-icon">&#10003;</span> Event updated successfully!</li>';
     document.getElementById('creation-result').innerHTML =
-      '<div style="margin-top:24px;padding:24px;background:rgba(0,200,212,0.08);border:1px solid rgba(0,200,212,0.25);border-radius:16px;text-align:center;">' +
+      '<div style="margin-top:24px;padding:24px;background:rgba(74,127,212,0.08);border:1px solid rgba(74,127,212,0.25);border-radius:16px;text-align:center;">' +
       '<p style="font-size:18px;font-weight:800;color:var(--teal2);margin-bottom:8px;">&#10003; Event Updated!</p>' +
       '<a href="' + data.url + '" target="_blank" style="color:var(--teal2);word-break:break-all;">' + data.url + '</a>' +
       '</div>';
@@ -1234,7 +1234,7 @@ function submitBlitzEvent() {
         var deleteWarning = '';
         if (deleteAfter) {
           var deleteDateStr = new Date(deleteAfter).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-          deleteWarning = '<p style="background:rgba(255,180,0,0.08);border:1px solid rgba(255,180,0,0.25);border-radius:6px;padding:10px 14px;color:rgba(255,200,60,0.9);font-size:12px;margin:16px 0 0;">⏳ This app will be <strong>automatically deleted on ' + escapeHtml(deleteDateStr) + '</strong> (5 days after the event ends). Download your leads Excel before then.</p>';
+          deleteWarning = '<p style="background:rgba(107,63,168,0.08);border:1px solid rgba(107,63,168,0.25);border-radius:6px;padding:10px 14px;color:rgba(107,63,168,0.9);font-size:12px;margin:16px 0 0;">⏳ This app will be <strong>automatically deleted on ' + escapeHtml(deleteDateStr) + '</strong> (5 days after the event ends). Download your leads Excel before then.</p>';
         }
         resultEl.innerHTML =
           '<div class="result-card success">' +
