@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --gold: #FF6B2B; --gold2: #FF8C42;
+  --gold: #C4187A; --gold2: #E0259A;
   --teal: #7B4FBF; --teal2: #8B5CF6;
   --night: #070B1A; --night2: #0D1428;
   --white: #FFFFFF; --muted: rgba(255,255,255,0.55);
@@ -31,7 +31,7 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
   display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
   color:var(--muted); transition:all 0.3s; cursor:default; }
 .step-dot.active { border-color:var(--teal); color:var(--teal2); background:rgba(139,92,246,0.12); }
-.step-dot.done { border-color:var(--gold); background:rgba(255,107,43,0.15); color:var(--gold); }
+.step-dot.done { border-color:var(--gold); background:rgba(196,24,122,0.15); color:var(--gold); }
 
 /* Step panels */
 .step-panel { display:none; }
@@ -84,11 +84,11 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
   color:var(--white); border-radius:50px; padding:12px 28px; cursor:pointer;
   font-family:'Sora',sans-serif; font-size:14px; font-weight:700; transition:border-color 0.2s; }
 .btn-back:hover { border-color:rgba(255,255,255,0.5); }
-.btn-next { background:linear-gradient(135deg,#FF6B2B,#FF8C42); color:#1A1200;
+.btn-next { background:linear-gradient(135deg,#C4187A,#E0259A); color:#1A1200;
   border:none; border-radius:50px; padding:12px 32px; cursor:pointer;
   font-family:'Sora',sans-serif; font-size:14px; font-weight:800;
-  box-shadow:0 4px 16px rgba(255,107,43,0.3); transition:all 0.2s; }
-.btn-next:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(255,107,43,0.32); }
+  box-shadow:0 4px 16px rgba(196,24,122,0.3); transition:all 0.2s; }
+.btn-next:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(196,24,122,0.32); }
 .btn-next:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
 
 /* Progress bar (creation step) */
