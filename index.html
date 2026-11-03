@@ -408,6 +408,45 @@ function showEditPanel() {
   document.getElementById('edit-repo-input').focus();
 }
 
+
+// Populate all wizard step UIs from state (used in edit mode)
+function populateWizardFromState() {
+  // Step 2 — Days
+  var daysList = document.getElementById('days-list');
+  daysList.innerHTML = '';
+  (state.days || []).forEach(function(d) {
+    var div = document.createElement('div');
+    div.className = 'row-item day-row';
+    div.innerHTML =
+      '<input class="lf-input day-label" placeholder="Day label" style="flex:2" value="' + escapeAttr(d.label||'') + '" />' +
+      '<input class="lf-input day-date" type="date" style="flex:1" value="' + escapeAttr(d.date||'') + '" />' +
+      '<button class="remove-btn" onclick="this.parentElement.remove()">Remove</button>';
+    daysList.appendChild(div);
+  });
+
+  // Step 3 — Partners
+  var partnersList = document.getElementById('partners-list');
+  partnersList.innerHTML = '';
+  (state.partners || []).forEach(function(p) { addPartner(p); });
+
+  // Step 6 — SDEs
+  var sdeList = document.getElementById('sde-list');
+  if (sdeList) {
+    sdeList.innerHTML = '';
+    (state.sdes || []).forEach(function(s) { addSde(s); });
+  }
+
+  // Step 1 toggles
+  var roomsToggle = document.getElementById('s1-rooms-enabled');
+  if (roomsToggle) roomsToggle.checked = !!state.roomsEnabled;
+  var acctToggle = document.getElementById('s1-account-validation');
+  if (acctToggle) acctToggle.checked = !!state.accountValidation;
+  var resToggle = document.getElementById('s1-resources-enabled');
+  if (resToggle) resToggle.checked = !!state.resourcesEnabled;
+  var phoneMandToggle = document.getElementById('s1-phone-mandatory');
+  if (phoneMandToggle) phoneMandToggle.checked = (state.phoneMandatory !== false);
+}
+
 async function loadEventForEdit() {
   var repoName = document.getElementById('edit-repo-input').value.trim().toLowerCase();
   var statusEl = document.getElementById('edit-load-status');
@@ -501,6 +540,7 @@ async function loadEventForEdit() {
 
     // Switch to wizard
     document.getElementById('mode-selector').style.display = 'none';
+    populateWizardFromState();
     showStep(1);
     statusEl.innerHTML = '';
   } catch(e) {
