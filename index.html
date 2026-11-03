@@ -580,6 +580,7 @@ async function updateBlitzEvent() {
       agenda: state.agenda,
       sdes: state.sdes,
       resources: state.resourcesEnabled ? state.resources : [],
+        phoneMandatory: state.phoneMandatory !== false,
       repoName: state.editRepoName
     };
 
@@ -1235,6 +1236,7 @@ function submitBlitzEvent() {
       agenda: state.agenda,
       sdes: state.sdes,
       resources: state.resourcesEnabled ? state.resources : [],
+        phoneMandatory: state.phoneMandatory !== false,
       repoName: v('s7-repo')
     };
 
