@@ -263,8 +263,9 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
       </div>
       <div id="accounts-upload-area" style="display:none;">
         <div class="lf-group">
-          <label class="lf-label">Upload CSV <span class="lf-req">*</span></label>
-          <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Two or three columns: <strong>Partner</strong> (must match partner names exactly), <strong>Account Name</strong>, and optionally <strong>SDE Name</strong> (auto-assigns the account to that SDE's tab in the Manager Dashboard).</p>
+          <label class="lf-label">Upload Account List <span class="lf-req">*</span></label>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:6px;">Upload an Excel or CSV file with your target accounts. <a href="Blitz_Account_Master_Template.xlsx" download style="color:var(--teal);text-decoration:underline;">Download the template ↓</a></p>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:10px;">Columns: <strong>Account Name</strong>, <strong>Country</strong> (optional), <strong>Industry</strong> (optional). A <strong>Partner</strong> column assigns accounts to specific partners; <strong>SDE Name</strong> auto-assigns to dashboard tabs.</p>
           <input id="accounts-csv" type="file" accept=".csv,.xls,.xlsx" class="lf-input" onchange="handleCsvUpload()" />
         </div>
         <div id="csv-status" style="font-size:13px;margin-top:8px;"></div>
