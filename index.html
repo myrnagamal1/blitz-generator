@@ -262,6 +262,34 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
         <span class="toggle-label" id="toggle-accounts-label">Disabled</span>
       </div>
       <div id="accounts-upload-area" style="display:none;">
+
+        <!-- AI Prompt box -->
+        <div style="background:rgba(0,200,212,0.06);border:1px solid rgba(0,200,212,0.25);border-radius:14px;padding:20px 22px;margin-bottom:22px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div style="font-weight:700;font-size:14px;">🤖 Don't have a list yet? Use AI to build one</div>
+            <button type="button" onclick="copyAiPrompt()" id="copy-prompt-btn"
+              style="padding:7px 16px;border-radius:20px;border:1.5px solid var(--teal);background:transparent;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;">
+              Copy Prompt
+            </button>
+          </div>
+          <p style="color:var(--muted);font-size:12px;margin:0 0 10px;">Copy this prompt → paste into <strong style="color:#fff;">ChatGPT</strong> or <strong style="color:#fff;">Claude</strong> → replace the placeholder with your raw account list → paste the output into the template.</p>
+          <textarea id="ai-prompt-box" readonly rows="7"
+            style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.75);font-family:'Courier New',monospace;font-size:11px;padding:12px;resize:none;line-height:1.5;">I need to build a Master Accounts list for a SAP Blitz Day event. Please generate a tab-separated table with these exact column headers:
+
+Account Name	Partner	SDE Name	Country	Industry	Contact Name	Contact Title	Phone	Email	Notes
+
+Rules:
+- Account Name is required. All other columns are optional — leave blank if unknown.
+- Partner: exact partner company name assigned to this account. Leave blank if shared.
+- SDE Name: full name of the SAP SDE responsible. Leave blank if not assigned.
+- Industry: Technology / Finance / Retail / Manufacturing / Healthcare / Energy / Telecom / Public Sector / Other.
+
+Here is my list of target accounts:
+[PASTE YOUR ACCOUNT LIST HERE]
+
+Return ONLY the tab-separated rows, no explanation, no markdown, no code block.</textarea>
+        </div>
+
         <div class="lf-group">
           <label class="lf-label">Upload Account List <span class="lf-req">*</span></label>
           <p style="color:var(--muted);font-size:13px;margin-bottom:6px;">Upload an Excel or CSV file with your target accounts. <a href="Blitz_Master_Accounts_Template.xlsx" download style="color:var(--teal);text-decoration:underline;">Download the template ↓</a></p>
@@ -971,6 +999,17 @@ function escapeAttr(str) {
 }
 
 // ── Account validation toggle ──
+function copyAiPrompt() {
+  var box = document.getElementById('ai-prompt-box');
+  navigator.clipboard.writeText(box.value).then(function() {
+    var btn = document.getElementById('copy-prompt-btn');
+    btn.textContent = '✓ Copied!';
+    btn.style.background = 'var(--teal)';
+    btn.style.color = '#000';
+    setTimeout(function() { btn.textContent = 'Copy Prompt'; btn.style.background = 'transparent'; btn.style.color = 'var(--teal)'; }, 2000);
+  });
+}
+
 function toggleAccountVal() {
   state.accountValidation = !state.accountValidation;
   document.getElementById('toggle-accounts').classList.toggle('on', state.accountValidation);
