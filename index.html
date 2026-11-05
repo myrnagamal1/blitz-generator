@@ -207,6 +207,17 @@ body { font-family:'Sora',sans-serif; background:var(--night); color:var(--white
         <p style="color:var(--muted);font-size:12px;margin-top:6px;">Shown on the lead form with a one-click copy button so reps can paste it into CRM.</p>
       </div>
     </div>
+      <div class="lf-group">
+        <label class="lf-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="s1-survey-toggle" onchange="toggleSurveyUrl()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;" />
+          Include a feedback / survey link
+        </label>
+        <div id="s1-survey-wrap" style="display:none;margin-top:10px;">
+          <input id="s1-survey-url" class="lf-input" type="url" placeholder="https://forms.office.com/…" />
+          <p style="color:var(--muted);font-size:12px;margin-top:6px;">A floating "Share Feedback" button will appear on the event page linking to this URL.</p>
+        </div>
+      </div>
+    </div>
     <div class="nav-row"><button class="btn-next" onclick="goNext(1)">Next &#8594;</button></div>
   </div>
 
@@ -445,6 +456,11 @@ function startCreate() {
   showStep(1);
 }
 
+function toggleSurveyUrl() {
+  var wrap = document.getElementById('s1-survey-wrap');
+  if (wrap) wrap.style.display = document.getElementById('s1-survey-toggle').checked ? '' : 'none';
+}
+
 function showEditPanel() {
   document.getElementById('edit-panel').style.display = '';
   document.getElementById('edit-repo-input').focus();
@@ -542,6 +558,13 @@ async function loadEventForEdit() {
     document.getElementById('s1-password').value = dashPass;
     document.getElementById('s1-target').value = leadTarget;
     document.getElementById('s1-campaign').value = campaignCode;
+    // Survey
+    var surveyUrl = extractConstStr('SURVEY_URL');
+    if (surveyUrl) {
+      document.getElementById('s1-survey-toggle').checked = true;
+      document.getElementById('s1-survey-url').value = surveyUrl;
+      toggleSurveyUrl();
+    }
     document.getElementById('s1-phone').value = phoneFormat;
 
     // ── Pre-fill Step 2: Days ──
@@ -662,6 +685,7 @@ async function updateBlitzEvent() {
       leadTarget: parseInt(v('s1-target')) || 65,
       dashPassword: v('s1-password'),
       campaignCode: v('s1-campaign').trim(),
+      surveyUrl: document.getElementById('s1-survey-toggle').checked ? v('s1-survey-url').trim() : '',
       days: state.days,
       partners: state.partners,
       accountValidation: state.accountValidation,
@@ -1378,6 +1402,7 @@ function renderReview() {
     ['Lead Target', escapeHtml(v('s1-target'))],
     ['Dashboard Password', escapeHtml(v('s1-password'))],
     ['Campaign Code', v('s1-campaign') ? escapeHtml(v('s1-campaign')) : 'None'],
+      ['Survey Link', document.getElementById('s1-survey-toggle').checked && v('s1-survey-url') ? '<a href="' + escapeHtml(v('s1-survey-url')) + '" target="_blank" style="color:var(--teal);">✓ Included</a>' : 'None'],
     ['Account Validation', state.accountValidation ? 'Enabled' : 'Disabled'],
     ['Rooms Section', state.roomsEnabled ? 'Enabled' : 'Disabled'],
     ['Resources Section', state.resourcesEnabled ? 'Enabled' : 'Disabled'],
@@ -1437,6 +1462,7 @@ function submitBlitzEvent() {
       leadTarget: parseInt(v('s1-target')) || 65,
       dashPassword: v('s1-password'),
       campaignCode: v('s1-campaign').trim(),
+      surveyUrl: document.getElementById('s1-survey-toggle').checked ? v('s1-survey-url').trim() : '',
       days: state.days,
       partners: state.partners,
       accountValidation: state.accountValidation,
