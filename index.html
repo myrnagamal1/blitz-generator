@@ -354,6 +354,14 @@ Return ONLY the tab-separated rows, no explanation, no markdown, no code block.<
         <span class="toggle-label" id="toggle-resources-label">Enabled</span>
       </div>
       <div id="resources-area">
+
+        <!-- Pre-built SAP Battle Cards -->
+        <div style="background:rgba(123,79,191,0.08);border:1px solid rgba(123,79,191,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
+          <div style="font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--blue-lt);margin-bottom:4px;">SAP Pre-built Battle Cards</div>
+          <p style="color:var(--muted);font-size:12px;margin:0 0 14px;">Check the ones you want to include — then attach the PDF file for each selected card.</p>
+          <div id="battlecard-presets"></div>
+        </div>
+
         <div id="resources-list"></div>
         <button class="add-btn" id="add-resource-btn" onclick="addResourceSlot()">+ Add PDF</button>
       </div>
@@ -1150,6 +1158,45 @@ function addRoom(btn) {
   list.appendChild(div);
 }
 
+// ── Battlecard presets ──
+var BATTLECARD_PRESETS = [
+  { id: 'bc-oracle-erp',   title: 'Oracle vs SAP ERP',         desc: 'SAP S/4HANA vs Oracle ERP Cloud competitive comparison' },
+  { id: 'bc-ms-dynamics',  title: 'Microsoft Dynamics vs SAP',  desc: 'SAP vs Microsoft Dynamics 365 competitive positioning' },
+  { id: 'bc-sap-cx',       title: 'SAP CX Battlecard',          desc: 'SAP Customer Experience vs Salesforce' },
+  { id: 'bc-sap-btp',      title: 'SAP BTP Overview',           desc: 'Business Technology Platform value proposition' },
+  { id: 'bc-sap-hr',       title: 'SAP SuccessFactors vs Workday', desc: 'HR cloud competitive battlecard' },
+];
+
+function renderBattlecardPresets() {
+  var container = document.getElementById('battlecard-presets');
+  if (!container) return;
+  container.innerHTML = BATTLECARD_PRESETS.map(function(bc) {
+    return '<div class="bc-preset-row" id="bc-row-' + bc.id + '" style="border-bottom:1px solid rgba(123,79,191,0.12);padding:12px 0;">' +
+      '<label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">' +
+        '<input type="checkbox" id="bc-chk-' + bc.id + '" onchange="toggleBattlecardUpload(\'' + bc.id + '\')" style="margin-top:3px;accent-color:var(--purple);" />' +
+        '<div>' +
+          '<div style="font-weight:600;font-size:13px;color:#e0d8ff;">' + bc.title + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:1px;">' + bc.desc + '</div>' +
+        '</div>' +
+      '</label>' +
+      '<div class="bc-upload-area" id="bc-upload-' + bc.id + '" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(123,79,191,0.06);border-radius:8px;">' +
+        '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Attach your PDF for: <strong style="color:#e0d8ff;">' + bc.title + '</strong></label>' +
+        '<input type="file" accept=".pdf" class="lf-input bc-file" data-bc-id="' + bc.id + '" data-bc-title="' + bc.title.replace(/"/g,'&quot;') + '" data-bc-desc="' + bc.desc.replace(/"/g,'&quot;') + '" onchange="checkPdfSize(this)" style="font-size:12px;" />' +
+        '<div class="res-size-err" style="color:#ff6b6b;font-size:12px;margin-top:4px;display:none;">File exceeds 10 MB limit.</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleBattlecardUpload(bcId) {
+  var chk = document.getElementById('bc-chk-' + bcId);
+  var area = document.getElementById('bc-upload-' + bcId);
+  if (area) area.style.display = chk.checked ? 'block' : 'none';
+}
+
+// Call on page load to render preset list
+renderBattlecardPresets();
+
 // ── Resources toggle + management ──
 function toggleResources() {
   state.resourcesEnabled = !state.resourcesEnabled;
@@ -1198,20 +1245,17 @@ function checkPdfSize(input) {
 
 function collectResources() {
   var slots = document.querySelectorAll('#resources-list .card');
-  var promises = Array.from(slots).map(function(slot) {
+  var manualPromises = Array.from(slots).map(function(slot) {
     var title = slot.querySelector('.res-title').value.trim();
     var desc = slot.querySelector('.res-desc').value.trim();
     var fileInput = slot.querySelector('.res-file');
     var existingUrlInput = slot.querySelector('.res-existing-url');
     var existingUrl = existingUrlInput ? existingUrlInput.value.trim() : '';
     if (!title) return Promise.resolve(null);
-    // If no new file chosen but there's an existing URL, keep the existing resource
     if (!fileInput.files[0]) {
       if (existingUrl) {
-        // Find matching existing resource from state to preserve base64/filename
         var existingRes = (state.resources || []).find(function(r) { return r.url === existingUrl || r.title === title; });
         if (existingRes) return Promise.resolve(existingRes);
-        // Return a stub with just url — backend will handle keeping the existing file
         return Promise.resolve({ title: title, description: desc, url: existingUrl });
       }
       return Promise.resolve(null);
@@ -1221,7 +1265,23 @@ function collectResources() {
       return { title: title, description: desc, filename: file.name, base64: base64 };
     });
   });
-  return Promise.all(promises).then(function(results) {
+
+  // Collect checked battlecard presets that have a file attached
+  var bcInputs = document.querySelectorAll('.bc-file');
+  var bcPromises = Array.from(bcInputs).filter(function(inp) {
+    var bcId = inp.getAttribute('data-bc-id');
+    var chk = document.getElementById('bc-chk-' + bcId);
+    return chk && chk.checked && inp.files[0];
+  }).map(function(inp) {
+    var file = inp.files[0];
+    var title = inp.getAttribute('data-bc-title');
+    var desc  = inp.getAttribute('data-bc-desc');
+    return fileToBase64(file).then(function(base64) {
+      return { title: title, description: desc, filename: file.name, base64: base64 };
+    });
+  });
+
+  return Promise.all(manualPromises.concat(bcPromises)).then(function(results) {
     return results.filter(Boolean);
   });
 }
