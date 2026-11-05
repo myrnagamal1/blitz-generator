@@ -488,15 +488,102 @@ async function loadEventForEdit() {
     state.resourcesEnabled = resEnabled;
     state.accountValidation = acctEnabled;
 
-    // Pre-fill step 1
+    // ── Pre-fill Step 1: Event Basics ──
     document.getElementById('s1-name').value = eventName;
     // Restore country tags
     _countryTags = country ? country.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
-    (function(){var list=document.getElementById('country-tags-list');if(!list)return;list.innerHTML=_countryTags.map(function(t,i){return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-dim);color:var(--blue-lt);border:1px solid var(--blue);border-radius:20px;padding:3px 10px;font-size:13px;font-weight:600;">'+escapeHtml(t)+'<button type="button" onclick="removeCountryTag('+i+')" style="background:none;border:none;color:inherit;cursor:pointer;font-size:14px;padding:0;line-height:1;margin-left:2px;">×</button></span>';}).join('');document.getElementById('s1-country').value=_countryTags.join(', ');})();
+    (function(){
+      var list = document.getElementById('country-tags-list');
+      if (!list) return;
+      list.innerHTML = _countryTags.map(function(t, i) {
+        return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-dim);color:var(--blue-lt);border:1px solid var(--blue);border-radius:20px;padding:3px 10px;font-size:13px;font-weight:600;">' +
+          escapeHtml(t) +
+          '<button type="button" onclick="removeCountryTag(' + i + ')" style="background:none;border:none;color:inherit;cursor:pointer;font-size:14px;padding:0;line-height:1;margin-left:2px;">×</button>' +
+          '</span>';
+      }).join('');
+      document.getElementById('s1-country').value = _countryTags.join(', ');
+    })();
     document.getElementById('s1-password').value = dashPass;
     document.getElementById('s1-target').value = leadTarget;
     document.getElementById('s1-campaign').value = campaignCode;
     document.getElementById('s1-phone').value = phoneFormat;
+
+    // ── Pre-fill Step 2: Days ──
+    var daysList = document.getElementById('days-list');
+    daysList.innerHTML = '';
+    days.forEach(function(day) {
+      var div = document.createElement('div');
+      div.className = 'row-item day-row';
+      div.innerHTML =
+        '<input class="lf-input day-label" placeholder="e.g. Day 1" style="flex:2" value="' + escapeAttr(day.label || '') + '" />' +
+        '<input class="lf-input day-date" type="date" style="flex:1" value="' + escapeAttr(day.date || '') + '" />' +
+        '<button class="remove-btn" onclick="this.parentElement.remove()">Remove</button>';
+      daysList.appendChild(div);
+    });
+    if (days.length === 0) addDay();
+
+    // ── Pre-fill Step 3: Partners + SDEs ──
+    var partnersList = document.getElementById('partners-list');
+    partnersList.innerHTML = '';
+    partners.forEach(function(p) { addPartner(p); });
+    if (partners.length === 0) addPartner();
+
+    var sdeList = document.getElementById('sde-list');
+    sdeList.innerHTML = '';
+    sdes.forEach(function(s) { addSde(s); });
+
+    // ── Pre-fill Step 4: Account Validation toggle UI ──
+    document.getElementById('toggle-accounts').classList.toggle('on', acctEnabled);
+    document.getElementById('toggle-accounts-label').textContent = acctEnabled ? 'Enabled' : 'Disabled';
+    document.getElementById('accounts-upload-area').style.display = acctEnabled ? 'block' : 'none';
+
+    // ── Pre-fill Step 5: Rooms toggle UI ──
+    document.getElementById('toggle-rooms').classList.toggle('on', roomsEnabled);
+    document.getElementById('toggle-rooms-label').textContent = roomsEnabled ? 'Enabled' : 'Disabled';
+    document.getElementById('rooms-area').style.display = roomsEnabled ? 'block' : 'none';
+
+    // ── Pre-fill Step 7: Resources toggle UI ──
+    document.getElementById('toggle-resources').classList.toggle('on', resEnabled);
+    document.getElementById('toggle-resources-label').textContent = resEnabled ? 'Enabled' : 'Disabled';
+    document.getElementById('resources-area').style.display = resEnabled ? 'block' : 'none';
+    // Note: PDFs cannot be re-attached (browser security), but titles/descriptions from
+    // state.resources (if any) can be shown. Since resources come from GitHub (no local files),
+    // we add placeholder slots showing existing resource titles so the user knows what's there.
+    if (resEnabled) {
+      var existingResources = extractConst('RESOURCES', true) || [];
+      if (existingResources.length > 0) {
+        var resList = document.getElementById('resources-list');
+        resList.innerHTML = '';
+        existingResources.forEach(function(res, idx) {
+          var div = document.createElement('div');
+          div.className = 'card';
+          div.style.cssText = 'padding:20px;margin-bottom:12px;';
+          div.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+              '<span style="font-weight:700;">Resource ' + (idx+1) + '</span>' +
+              '<button class="remove-btn" onclick="this.closest(\'.card\').remove()">Remove</button>' +
+            '</div>' +
+            '<div class="lf-group">' +
+              '<label class="lf-label">Title <span class="lf-req">*</span></label>' +
+              '<input class="lf-input res-title" value="' + escapeAttr(res.title || '') + '" placeholder="e.g. Oracle vs SAP Battlecard" />' +
+            '</div>' +
+            '<div class="lf-group">' +
+              '<label class="lf-label">Description</label>' +
+              '<input class="lf-input res-desc" value="' + escapeAttr(res.description || '') + '" placeholder="Short description" />' +
+            '</div>' +
+            '<div class="lf-group">' +
+              '<label class="lf-label">PDF File <span class="lf-req">*</span> (max 10 MB)</label>' +
+              '<p style="color:var(--teal2);font-size:12px;margin-bottom:6px;">&#10003; Existing: <strong>' + escapeHtml(res.filename || res.title || '') + '</strong> — upload a new file only if you want to replace it.</p>' +
+              '<input type="file" accept=".pdf" class="lf-input res-file" onchange="checkPdfSize(this)" />' +
+              '<input type="hidden" class="res-existing-url" value="' + escapeAttr(res.url || '') + '" />' +
+              '<div class="res-size-err" style="color:#ff6b6b;font-size:12px;margin-top:4px;display:none;">File exceeds 10 MB limit.</div>' +
+            '</div>';
+          resList.appendChild(div);
+        });
+        // Store existing resources in state so update doesn't wipe them if no new file is uploaded
+        state.resources = existingResources;
+      }
+    }
 
     // Hide repo step (not needed for edit)
     document.getElementById('step-8').style.display = 'none';
@@ -993,9 +1080,18 @@ function renderRoomsByDay() {
   var container = document.getElementById('rooms-by-day');
   container.innerHTML = state.days.map(function(day) {
     var safeDay = escapeAttr(day.label);
+    var existingRooms = (state.rooms && state.rooms[day.label]) ? state.rooms[day.label] : [];
+    var roomRows = existingRooms.map(function(r) {
+      return '<div class="row-item" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">' +
+        '<input class="lf-input room-input" placeholder="Room name" style="flex:1;min-width:120px;" value="' + escapeAttr(r.room || '') + '" />' +
+        '<input class="lf-input room-partner-input" placeholder="Partner (optional)" style="flex:1;min-width:120px;" value="' + escapeAttr(r.partner || '') + '" />' +
+        '<input class="lf-input room-sub-input" placeholder="Time / note (optional)" style="flex:1;min-width:120px;" value="' + escapeAttr(r.sub || '') + '" />' +
+        '<button class="remove-btn" onclick="this.parentElement.remove()">Remove</button>' +
+        '</div>';
+    }).join('');
     return '<div class="rooms-day-group" data-day="' + safeDay + '" style="margin-bottom:24px;">' +
       '<p style="font-weight:700;margin-bottom:10px;color:var(--gold);">' + escapeHtml(day.label) + '</p>' +
-      '<div class="row-list"></div>' +
+      '<div class="row-list">' + roomRows + '</div>' +
       '<button class="add-btn" onclick="addRoom(this)">+ Add Room</button>' +
       '</div>';
   }).join('');
@@ -1067,7 +1163,20 @@ function collectResources() {
     var title = slot.querySelector('.res-title').value.trim();
     var desc = slot.querySelector('.res-desc').value.trim();
     var fileInput = slot.querySelector('.res-file');
-    if (!title || !fileInput.files[0]) return Promise.resolve(null);
+    var existingUrlInput = slot.querySelector('.res-existing-url');
+    var existingUrl = existingUrlInput ? existingUrlInput.value.trim() : '';
+    if (!title) return Promise.resolve(null);
+    // If no new file chosen but there's an existing URL, keep the existing resource
+    if (!fileInput.files[0]) {
+      if (existingUrl) {
+        // Find matching existing resource from state to preserve base64/filename
+        var existingRes = (state.resources || []).find(function(r) { return r.url === existingUrl || r.title === title; });
+        if (existingRes) return Promise.resolve(existingRes);
+        // Return a stub with just url — backend will handle keeping the existing file
+        return Promise.resolve({ title: title, description: desc, url: existingUrl });
+      }
+      return Promise.resolve(null);
+    }
     var file = fileInput.files[0];
     return fileToBase64(file).then(function(base64) {
       return { title: title, description: desc, filename: file.name, base64: base64 };
